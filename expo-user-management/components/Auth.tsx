@@ -30,13 +30,17 @@ export default function Auth() {
 
   async function signUpWithEmail() {
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+
+    const { error: signUpError } = await supabase.auth.signUp({
       email: email,
       password: password,
     });
 
-    if (error) Alert.alert(error.message);
-    else Alert.alert('Sign up successful, please check your email for verification.');
+    if(signUpError) {
+      Alert.alert(signUpError.message);
+    } else {
+      Alert.alert('Sign up successful. Please check your email for verification.');
+    }
     setLoading(false);
   }
 
@@ -55,23 +59,10 @@ export default function Auth() {
         {isSigningUp ? (
           <>
             <Input style={styles.input}
-              placeholder="First Name"
-              inputStyle={{ paddingLeft: 10}}
-              label="First Name"
-            
-              labelStyle={styles.label}
-            />
-            <Input style={styles.input}
-              placeholder="Last Name"
-              inputStyle={{ paddingLeft: 10}}
-              label="Last Name"
-            
-              labelStyle={styles.label}
-            />
-            <Input style={styles.input}
               placeholder="email@address.com"
               onChangeText={setEmail}
               value={email}
+              autoComplete='off'
               inputStyle={{ paddingLeft: 10}}
               label="Email"
               autoCapitalize="none"
@@ -81,6 +72,7 @@ export default function Auth() {
               placeholder="Password"
               onChangeText={setPassword}
               value={password}
+              autoComplete='off'
               secureTextEntry={true}
               inputStyle={{ paddingLeft: 10}}
               label="Password"
@@ -96,6 +88,7 @@ export default function Auth() {
               placeholder="email@address.com"
               onChangeText={setEmail}
               value={email}
+              autoComplete='off'
               inputStyle={{ paddingLeft: 10}}
               label="Email"
               autoCapitalize="none"
@@ -105,6 +98,7 @@ export default function Auth() {
               placeholder="Password"
               onChangeText={setPassword}
               value={password}
+              autoComplete='off'
               secureTextEntry={true}
               inputStyle={{ paddingLeft: 10}}
               label="Password"
