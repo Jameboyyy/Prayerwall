@@ -1,6 +1,10 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    "baseUrl": "./", // points to the root of the project
+    "paths": {
+      "@/*": ["./*"] // all imports starting with '@/' will map to the root folder
+    }
   }
 }

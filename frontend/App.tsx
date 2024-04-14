@@ -1,60 +1,91 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, ActivityIndicator, Alert, Button } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator, StackNavigationProp } from '@react-navigation/native-stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Backendless from 'backendless';
 import { StatusBar } from 'expo-status-bar';
 import * as Font from 'expo-font';
-import Auth from './auth/auth'; // Ensure path is correct
+import Auth from './auth/auth'; // Ensure this path is correct
+import Account from './auth/account'; // Ensure this path is correct
+import MainTab from './tabs/mainTab'; // Ensure this path is correct
+import { enableScreens } from 'react-native-screens';
+enableScreens();
 
+// Define the type for the root stack parameters
 type RootStackParamList = {
   UserFeed: undefined;
   Account: { ownerId: string };
   Auth: undefined;
-}
-
-
-export type AuthScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Account'>;
+  MainTab: undefined;
+};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// Function to load fonts
+// Function to asynchronously load fonts
 const fetchFonts = () => {
   return Font.loadAsync({
     'JosefinSans-Regular': require('./fonts/JosefinSans-Regular.ttf'),
     'JosefinSans-Italic': require('./fonts/JosefinSans-Italic.ttf'),
     'JosefinSans-Bold': require('./fonts/JosefinSans-Bold.ttf'),
-    // Include any other fonts here
   });
 };
 
-const HomeScreen: React.FC = () => {
-  return (
-    <View style={styles.container}>
-      <Text style={{ fontFamily: 'OpenSans-Regular' }}>Welcome to the App!</Text>
-    </View>
-  );
-};
-
-const Stack = createNativeStackNavigator();
-
 export default function App() {
   const [fontLoaded, setFontLoaded] = useState(false);
+  const [initializing, setInitializing] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Backendless.initApp('98E9F92E-70F6-5F4D-FF47-A45B6253CB00', 'D9AC34A2-9620-4BFB-9219-C4C640887E28');
-    fetchFonts().then(() => setFontLoaded(true)).catch(error => console.error(error));
+    async function initializeApp() {
+      try {
+        // Initialize Backendless with your application ID and API key
+        Backendless.initApp('98E9F92E-70F6-5F4D-FF47-A45B6253CB00', 'D9AC34A2-9620-4BFB-9219-C4C640887E28');
+        // Load custom fonts
+        await fetchFonts();
+        setFontLoaded(true);
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setError('Failed to initialize app');
+      } finally {
+        setInitializing(false);
+      }
+    }
+
+    initializeApp();
   }, []);
 
+  if (initializing) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        {error && <Text>{error}</Text>}
+      </View>
+    );
+  }
+
   if (!fontLoaded) {
-    return <View style={styles.loaderContainer}><ActivityIndicator size="large" /></View>;
+    function initializeApp() {
+      throw new Error('Function not implemented.');
+    }
+
+    return (
+      <View style={styles.loaderContainer}>
+        <Text>Failed to load fonts.</Text>
+        <Button title="Retry" onPress={() => {
+      // Retrying font loading by resetting the fontLoaded state
+      setFontLoaded(false);
+      initializeApp(); // Call initialization again
+    }} />
+      </View>
+    );
   }
 
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Auth">
         <Stack.Screen name="Auth" component={Auth} options={{ headerShown: false }} />
-        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Account" component={Account} options={{ headerShown: false }} />
+        <Stack.Screen name="MainTab" component={MainTab} options={{ headerShown: false }} />
       </Stack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>
@@ -62,15 +93,10 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   loaderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   }
 });
