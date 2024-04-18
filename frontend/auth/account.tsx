@@ -3,14 +3,9 @@ import { View, TextInput, Text, TouchableOpacity, StyleSheet, Alert, Image } fro
 import Backendless from 'backendless';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CustomUser } from '@/userTypes';  // Adjust the import path as necessary
+import { RootStackParamList } from '../navigationTypes';
 
 // Define the navigation stack parameters list
-type RootStackParamList = {
-    Account: { ownerId: string };
-    UserFeed: undefined;
-    Auth: undefined;
-    MainTab: { screen: keyof MainTabParamList } | undefined;
-};
 
 type MainTabParamList = {
     UserFeed: undefined;
@@ -24,7 +19,7 @@ const Account: React.FC<AccountProps> = ({ route, navigation }) => {
     const { ownerId } = route.params;
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
-    const [username, setUsername] = useState('');
+    const [userName, setUsername] = useState('');
 
     const handleSave = async () => {
         const user = await Backendless.UserService.getCurrentUser() as CustomUser | null;
@@ -32,22 +27,27 @@ const Account: React.FC<AccountProps> = ({ route, navigation }) => {
             Alert.alert('Error', 'User not found.');
             return;
         }
-        // Update user properties
-        user.firstName = firstName;
-        user.lastName = lastName;
-        user.username = username;
+
+        console.log(`Current user data before update:`, user);
+
+        // Ensure no leading/trailing whitespace to avoid validation issues
+        user.firstName = firstName.trim();
+        user.lastName = lastName.trim();
+        user.userName = userName.trim();
 
         try {
             const updatedUser = await Backendless.UserService.update(user) as CustomUser;
             console.log('Profile updated:', updatedUser);
 
-            // Navigate based on profile completeness
-            if (updatedUser.firstName && updatedUser.lastName && updatedUser.username) {
+            if (updatedUser.firstName && updatedUser.lastName && updatedUser.userName) {
+                console.log('All fields are complete, navigating to UserFeed');
                 navigation.navigate('MainTab', { screen: 'UserFeed' });
             } else {
+                console.log(`Incomplete profile: firstName='${updatedUser.firstName}', lastName='${updatedUser.lastName}', username='${updatedUser.userName}'`);
                 Alert.alert('Profile Incomplete', 'Please complete all fields in your profile.');
             }
         } catch (error) {
+            console.error('Profile update error:', error);
             if (error instanceof Error) {
                 Alert.alert('Error', error.message);
             } else {
@@ -55,6 +55,7 @@ const Account: React.FC<AccountProps> = ({ route, navigation }) => {
             }
         }
     };
+    
     
 
     return (
@@ -84,7 +85,7 @@ const Account: React.FC<AccountProps> = ({ route, navigation }) => {
                 <Text style={styles.label}>Username</Text>
                 <TextInput
                     placeholder="Username"
-                    value={username}
+                    value={userName}
                     onChangeText={setUsername}
                     style={styles.input}
                     autoCapitalize="none"

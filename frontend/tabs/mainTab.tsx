@@ -11,10 +11,9 @@ const MainTab = () => {
   return (
     <Tab.Navigator>
       <Tab.Screen name="UserFeed" component={UserFeed} />
-      <Tab.Screen name="UserProfile" component={UserProfile} />
       <Tab.Screen name="Search" component={Search} />
+      <Tab.Screen name="UserProfile" component={UserProfile} />
     </Tab.Navigator>
   );
 };
-
 export default MainTab;

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator, Alert, Button } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { RootStackParamList } from './navigationTypes';
 import Backendless from 'backendless';
 import { StatusBar } from 'expo-status-bar';
 import * as Font from 'expo-font';
@@ -12,12 +13,6 @@ import { enableScreens } from 'react-native-screens';
 enableScreens();
 
 // Define the type for the root stack parameters
-type RootStackParamList = {
-  UserFeed: undefined;
-  Account: { ownerId: string };
-  Auth: undefined;
-  MainTab: undefined;
-};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

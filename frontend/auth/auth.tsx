@@ -3,9 +3,10 @@ import { View, TextInput, Text, StyleSheet, Image, TouchableOpacity, Alert } fro
 import Backendless from 'backendless';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { CustomUser } from '@/userTypes';
-type AuthStackParamList = {
-    UserFeed: undefined;
-    Account: { userId: string };
+import { RootStackParamList } from '../navigationTypes';
+
+type AuthProps = {
+    navigation: StackNavigationProp<RootStackParamList, 'UserFeed' | 'Account'>;
 };
 
 type AuthMode = 'login' | 'signup';
@@ -13,10 +14,6 @@ type AuthMode = 'login' | 'signup';
 interface UserForm {
     email: string;
     password: string;
-}
-
-interface AuthProps {
-    navigation: StackNavigationProp<AuthStackParamList, 'UserFeed' | 'Account'>;
 }
 
 const Auth: React.FC<AuthProps> = ({ navigation }) => {
@@ -32,7 +29,7 @@ const Auth: React.FC<AuthProps> = ({ navigation }) => {
             Alert.alert('Error', 'Please fill all fields.');
             return;
         }
-    
+
         try {
             let user: CustomUser | null = null;
             if (authMode === 'login') {
@@ -41,22 +38,23 @@ const Auth: React.FC<AuthProps> = ({ navigation }) => {
                 const newUser = new Backendless.User() as CustomUser;
                 newUser.email = form.email;
                 newUser.password = form.password;
-                newUser.firstName = "Initial";  // Default first name
-                newUser.lastName = 'User';     // Default last name
-                newUser.username = "";         // Default username to ensure profile completion
-    
+                newUser.firstName = "Initial";
+                newUser.lastName = 'User';
+                newUser.userName = "";  // Ensure this matches your user schema
+
                 user = await Backendless.UserService.register(newUser) as CustomUser;
+                user = await Backendless.UserService.login(form.email, form.password, true) as CustomUser;
             }
 
-            if (user && user.firstName && user.lastName && user.username) {
+            if (user && user.userName && user.firstName && user.lastName) {
                 navigation.navigate('MainTab', { screen: 'UserFeed' });
             } else if (user) {
-                navigation.navigate('Account', { userId: user.objectId ?? '' });
+                navigation.navigate('Account', { ownerId: user.objectId ?? '' });
             } else {
                 Alert.alert('Error', 'User session could not be established.');
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Login/Register Error:', error);
             if (error instanceof Error) {
                 Alert.alert('Error', error.message);
             } else {
@@ -64,10 +62,6 @@ const Auth: React.FC<AuthProps> = ({ navigation }) => {
             }
         }
     };
-    
-    
-    
-    
 
     const switchMode = () => {
         setAuthMode(authMode === 'login' ? 'signup' : 'login');
