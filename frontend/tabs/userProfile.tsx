@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, Alert, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import Backendless from 'backendless';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { User } from '../types';
-import DefaultProfileImage from '../assets/Default_Picture.png';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faUsers, faUserGroup } from '@fortawesome/free-solid-svg-icons';
 import { UserProfileNavigationProp } from '../navigationTypes';
@@ -41,7 +40,7 @@ const UserProfile: React.FC = () => {
   const renderProfilePicture = () => {
     return userProfile?.profilePicture ? 
       <Image source={{ uri: userProfile.profilePicture }} style={styles.profileImage} /> :
-      <Image source={DefaultProfileImage} style={styles.profileImage} />;
+      <Image source={{ uri: 'https://res.cloudinary.com/dwey7oaba/image/upload/v1713607870/Default_Picture_ylyjcn.png' }} style={styles.profileImage} />;
   };
 
   if (loading) {
@@ -129,8 +128,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'center', 
     width: '100%', 
-    paddingHorizontal: 50,
+    paddingHorizontal: 20,
   },
 });
 
 export default UserProfile;
+

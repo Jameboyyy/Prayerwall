@@ -2,23 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import Backendless from 'backendless';
 import { useNavigation } from '@react-navigation/native';
-import { launchImageLibrary, MediaType, ImageLibraryOptions } from 'react-native-image-picker'; // Importing MediaType and ImageLibraryOptions
-
-import { CustomUser } from '../userTypes';
-
-// Define custom ImagePickerResponse interface
-interface ImagePickerResponse {
-    didCancel: boolean;
-    errorMessage?: string;
-    assets?: {
-        uri: string;
-    }[];
-}
+import * as ImagePicker from 'expo-image-picker'; // Importing ImagePicker from Expo
+import { CustomUser } from '@/userTypes';
 
 const EditProfile = () => {
     const navigation = useNavigation();
     const [user, setUser] = useState<CustomUser | null>(null);
-    const [profileImageUri, setProfileImageUri] = useState<string>('https://drive.google.com/file/d/1fF3TYk_qpARV8HskPup4GVRYQYNcZ-nQ/view?usp=sharing');
+    const [profileImageUri, setProfileImageUri] = useState<string>('https://res.cloudinary.com/dwey7oaba/image/upload/v1713607870/Default_Picture_ylyjcn.png');
 
     useEffect(() => {
         fetchUserDetails();
@@ -28,8 +18,9 @@ const EditProfile = () => {
         try {
             const currentUser = await Backendless.UserService.getCurrentUser();
             if (currentUser) {
-                setUser(currentUser as CustomUser);
-                setProfileImageUri(currentUser.profilePicture || 'https://drive.google.com/file/d/1fF3TYk_qpARV8HskPup4GVRYQYNcZ-nQ/view?usp=sharing');
+                setUser(currentUser as CustomUser); // Explicitly cast currentUser to CustomUser
+                // Use nullish coalescing operator (??) for setting profileImageUri
+                setProfileImageUri((currentUser as CustomUser).profilePicture ?? 'https://res.cloudinary.com/dwey7oaba/image/upload/v1713607870/Default_Picture_ylyjcn.png');
             }
         } catch (error) {
             console.error("Failed to fetch user:", error);
@@ -37,25 +28,26 @@ const EditProfile = () => {
         }
     };
 
-    const handleChoosePhoto = () => {
-        const options: ImageLibraryOptions = {
-            mediaType: 'photo', // Specify mediaType as 'photo' of type MediaType
-            quality: 1,
-            selectionLimit: 1,
-            includeBase64: false,
-        };
-        launchImageLibrary(options, (response: ImagePickerResponse) => { // Use custom ImagePickerResponse interface
-            if (response.didCancel) {
-                console.log('User cancelled image picker');
-            } else if (response.errorMessage) {
-                console.error('ImagePicker Error: ', response.errorMessage);
-                Alert.alert('Error', response.errorMessage);
-            } else if (response.assets && response.assets[0].uri) {
-                setProfileImageUri(response.assets[0].uri);
-            }
-        });
-    };
+    const handleChoosePhoto = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            alert('Sorry, we need camera roll permissions to make this work!');
+            return;
+        }
     
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
+        });
+    
+        console.log(result);
+    
+        if (result && !result.canceled && 'uri' in result) {
+            setProfileImageUri(result.uri as string);
+        }
+    };
 
     const handleSave = async () => {
         if (!user) {
@@ -65,8 +57,9 @@ const EditProfile = () => {
 
         const updatedUser: CustomUser = {
             ...user,
-            firstName: user.firstName?.trim(),
-            lastName: user.lastName?.trim(),
+            // Use optional chaining and nullish coalescing for accessing firstName and lastName
+            firstName: user?.firstName?.trim(),
+            lastName: user?.lastName?.trim(),
             profilePicture: profileImageUri
         };
 
@@ -89,13 +82,13 @@ const EditProfile = () => {
             </TouchableOpacity>
             <TextInput
                 style={styles.input}
-                value={user?.firstName || ''}
+                value={user?.firstName ?? ''}
                 onChangeText={(value) => setUser(prev => prev ? { ...prev, firstName: value } : null)}
                 placeholder="First Name"
             />
             <TextInput
                 style={styles.input}
-                value={user?.lastName || ''}
+                value={user?.lastName ?? ''}
                 onChangeText={(value) => setUser(prev => prev ? { ...prev, lastName: value } : null)}
                 placeholder="Last Name"
             />
