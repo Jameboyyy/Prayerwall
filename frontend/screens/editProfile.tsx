@@ -2,36 +2,45 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import Backendless from 'backendless';
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker'; // Importing ImagePicker from Expo
-import { CustomUser } from '@/userTypes';
+import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CustomUser } from '@/userTypes'; // Ensure this path is correctly set
 
 const EditProfile = () => {
     const navigation = useNavigation();
     const [user, setUser] = useState<CustomUser | null>(null);
     const [profileImageUri, setProfileImageUri] = useState<string>('https://res.cloudinary.com/dwey7oaba/image/upload/v1713607870/Default_Picture_ylyjcn.png');
-
+    
     useEffect(() => {
+        const fetchUserDetails = async () => {
+            try {
+                const currentUser = await Backendless.UserService.getCurrentUser();
+                console.log('Current User:', currentUser); // Log the current user object
+                if (currentUser) {
+                    setUser(currentUser as CustomUser);
+                    setProfileImageUri((currentUser as CustomUser).profilePicture || 'https://res.cloudinary.com/dwey7oaba/image/upload/v1713607870/Default_Picture_ylyjcn.png');
+                    const userToken = await AsyncStorage.getItem('user_token'); // Retrieve the user token from storage
+                    console.log('User Token:', userToken); // Log the retrieved user token
+                    if (!userToken) {
+                        // If the token is not stored, you can log the user out or handle it accordingly
+                        console.error("No user token available");
+                        // You might want to navigate the user to the login screen
+                        return;
+                    }
+                    // Set the user token in AsyncStorage (optional)
+                    AsyncStorage.setItem('user_token', userToken);
+                }
+            } catch (error) {
+                console.error('Fetch User Details Error:', error); // Log any errors that occur during user details fetching
+            }
+        };
         fetchUserDetails();
     }, []);
-
-    const fetchUserDetails = async () => {
-        try {
-            const currentUser = await Backendless.UserService.getCurrentUser();
-            if (currentUser) {
-                setUser(currentUser as CustomUser); // Explicitly cast currentUser to CustomUser
-                // Use nullish coalescing operator (??) for setting profileImageUri
-                setProfileImageUri((currentUser as CustomUser).profilePicture ?? 'https://res.cloudinary.com/dwey7oaba/image/upload/v1713607870/Default_Picture_ylyjcn.png');
-            }
-        } catch (error) {
-            console.error("Failed to fetch user:", error);
-            Alert.alert("Error", "Unable to fetch user data.");
-        }
-    };
 
     const handleChoosePhoto = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            alert('Sorry, we need camera roll permissions to make this work!');
+            Alert.alert('Permission Required', 'Camera roll permission is required to access your photos.');
             return;
         }
     
@@ -42,12 +51,59 @@ const EditProfile = () => {
             quality: 1,
         });
     
-        console.log(result);
+        console.log('Image Picker Result:', result); // Log the result
     
-        if (result && !result.canceled && 'uri' in result) {
-            setProfileImageUri(result.uri as string);
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+            const imageUrl = await uploadImageToBackendless(result.assets[0].uri);
+            if (imageUrl) {
+                setProfileImageUri(imageUrl);
+            } else {
+                Alert.alert('Upload Failed', 'Failed to upload image.');
+            }
         }
     };
+    
+
+    // Example code to handle file upload with proper headers
+    const uploadImageToBackendless = async (imageUri: string): Promise<string | null> => {
+        const filename = imageUri.split('/').pop() ?? 'upload.jpg';
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
+    
+        let formData = new FormData();
+        formData.append('file', blob, filename);
+    
+        try {
+            const userToken = await AsyncStorage.getItem('user_token');
+            if (!userToken) {
+                console.error("No user token available, can't upload");
+                return null;
+            }
+            
+    
+            const uploadResponse = await fetch(`https://turgentloaf.backendless.app/98E9F92E-70F6-5F4D-FF47-A45B6253CB00/09FEE149-C7DF-47A3-944B-47A6769CDB21/files/ProfilePictures/${filename}?overwrite=true`, {
+                method: 'POST',
+                headers: {
+                    // Updated Content-Type header to 'multipart/form-data'
+                    'Content-Type': 'multipart/form-data',
+                    'user-token': userToken
+                },
+                body: formData
+            });
+    
+            if (!uploadResponse.ok) {
+                console.error(`Upload error: ${uploadResponse.status}`);
+                return null;
+            }
+    
+            const responseData = await uploadResponse.json();
+            return responseData.fileURL;
+        } catch (error) {
+            console.error('Upload error:', error);
+            return null;
+        }
+    };
+    
 
     const handleSave = async () => {
         if (!user) {
@@ -55,11 +111,10 @@ const EditProfile = () => {
             return;
         }
 
-        const updatedUser: CustomUser = {
+        const updatedUser = {
             ...user,
-            // Use optional chaining and nullish coalescing for accessing firstName and lastName
-            firstName: user?.firstName?.trim(),
-            lastName: user?.lastName?.trim(),
+            firstName: user.firstName?.trim(),
+            lastName: user.lastName?.trim(),
             profilePicture: profileImageUri
         };
 

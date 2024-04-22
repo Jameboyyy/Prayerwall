@@ -1,6 +1,5 @@
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp , NavigatorScreenParams } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { NavigatorScreenParams } from '@react-navigation/native';
 
 // Root stack for any top-level navigation
 export type RootStackParamList = {

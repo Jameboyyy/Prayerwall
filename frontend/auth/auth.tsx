@@ -1,12 +1,14 @@
+// auth.tsx
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import Backendless from 'backendless';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { CustomUser } from '@/userTypes';
 import { RootStackParamList } from '../navigationTypes';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AuthProps = {
-    navigation: StackNavigationProp<RootStackParamList, 'UserFeed' | 'Account'>;
+    navigation: StackNavigationProp<RootStackParamList, 'Auth'>;
 };
 
 type AuthMode = 'login' | 'signup';
@@ -29,39 +31,52 @@ const Auth: React.FC<AuthProps> = ({ navigation }) => {
             Alert.alert('Error', 'Please fill all fields.');
             return;
         }
-
+    
         try {
             let user: CustomUser | null = null;
             if (authMode === 'login') {
                 user = await Backendless.UserService.login(form.email, form.password, true) as CustomUser;
             } else {
+                // Register new user
                 const newUser = new Backendless.User() as CustomUser;
                 newUser.email = form.email;
                 newUser.password = form.password;
                 newUser.firstName = "Initial";
                 newUser.lastName = 'User';
-                newUser.userName = "";  // Ensure this matches your user schema
-
+                newUser.userName = ""; 
+                newUser.profilePicture = 'https://res.cloudinary.com/dwey7oaba/image/upload/v1713607870/Default_Picture_ylyjcn.png';
                 user = await Backendless.UserService.register(newUser) as CustomUser;
+
+                // Login the user after registration
                 user = await Backendless.UserService.login(form.email, form.password, true) as CustomUser;
             }
-
-            if (user && user.userName && user.firstName && user.lastName) {
-                navigation.navigate('MainTab', { screen: 'UserFeed' });
-            } else if (user) {
+    
+            if (user && user['user-token']) {
+                console.log('User token:', user['user-token']); // Check if user token is available
+                await AsyncStorage.setItem('user_token', user['user-token']);
+                console.log('User token stored successfully.'); // Log success message
+                // Now navigate to the appropriate screen
                 navigation.navigate('Account', { ownerId: user.objectId ?? '' });
             } else {
-                Alert.alert('Error', 'User session could not be established.');
+                throw new Error('Failed to retrieve user token.');
             }
         } catch (error) {
             console.error('Login/Register Error:', error);
             if (error instanceof Error) {
-                Alert.alert('Error', error.message);
+                if (error.message.includes('Not existing user token')) {
+                    // Handle case where user token is not available immediately
+                    Alert.alert('User Token Unavailable', 'User token is not available immediately. Please log in again to update your user token.');
+                } else {
+                    Alert.alert('Error', error.message);
+                }
             } else {
                 Alert.alert('Error', 'An unexpected error occurred');
             }
         }
     };
+    
+    
+    
 
     const switchMode = () => {
         setAuthMode(authMode === 'login' ? 'signup' : 'login');

@@ -5,12 +5,12 @@ import { useNavigation } from '@react-navigation/native';
 import { User } from '../types';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faUsers, faUserGroup } from '@fortawesome/free-solid-svg-icons';
-import { UserProfileNavigationProp } from '../navigationTypes';
+import { UserProfileNavigationProp } from '../navigationTypes'; // Ensure this import is correct
 
 const UserProfile: React.FC = () => {
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const navigation = useNavigation<UserProfileNavigationProp>();
+  const navigation = useNavigation<UserProfileNavigationProp>(); // Applying the navigation prop type
 
   useEffect(() => {
     const fetchCurrentUserDetails = async () => {
@@ -133,4 +133,3 @@ const styles = StyleSheet.create({
 });
 
 export default UserProfile;
-

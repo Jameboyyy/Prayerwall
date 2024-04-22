@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+// account.tsx
+import React, { useState, useEffect } from 'react';
 import { View, TextInput, Text, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import Backendless from 'backendless';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CustomUser } from '@/userTypes';  // Adjust the import path as necessary
 import { RootStackParamList } from '../navigationTypes';
-
-// Define the navigation stack parameters list
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type MainTabParamList = {
     UserFeed: undefined;
@@ -21,10 +21,24 @@ const Account: React.FC<AccountProps> = ({ route, navigation }) => {
     const [lastName, setLastName] = useState('');
     const [userName, setUsername] = useState('');
 
+    useEffect(() => {
+        const checkUserSession = async () => {
+            const user = await Backendless.UserService.getCurrentUser() as CustomUser | null;
+            if (!user) {
+                Alert.alert('Error', 'User session not found. Please log in again.');
+                // You may navigate the user back to the login screen or handle the situation as appropriate
+                return;
+            }
+        };
+
+        checkUserSession();
+    }, []);
+
     const handleSave = async () => {
         const user = await Backendless.UserService.getCurrentUser() as CustomUser | null;
         if (!user) {
-            Alert.alert('Error', 'User not found.');
+            Alert.alert('Error', 'User session not found. Please log in again.');
+            // You may navigate the user back to the login screen or handle the situation as appropriate
             return;
         }
 
@@ -55,8 +69,6 @@ const Account: React.FC<AccountProps> = ({ route, navigation }) => {
             }
         }
     };
-    
-    
 
     return (
         <View style={styles.container}>

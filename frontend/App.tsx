@@ -13,7 +13,6 @@ import { enableScreens } from 'react-native-screens';
 enableScreens();
 
 // Define the type for the root stack parameters
-
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // Function to asynchronously load fonts
@@ -25,6 +24,11 @@ const fetchFonts = () => {
   });
 };
 
+// Set your Backendless keys
+const APPLICATION_ID = '98E9F92E-70F6-5F4D-FF47-A45B6253CB00';
+const JS_API_KEY = 'D9AC34A2-9620-4BFB-9219-C4C640887E28';
+export const REST_API_KEY = '09FEE149-C7DF-47A3-944B-47A6769CDB21';
+
 export default function App() {
   const [fontLoaded, setFontLoaded] = useState(false);
   const [initializing, setInitializing] = useState(true);
@@ -33,8 +37,9 @@ export default function App() {
   useEffect(() => {
     async function initializeApp() {
       try {
-        // Initialize Backendless with your application ID and API key
-        Backendless.initApp('98E9F92E-70F6-5F4D-FF47-A45B6253CB00', 'D9AC34A2-9620-4BFB-9219-C4C640887E28');
+        // Initialize Backendless with your application ID and JS API key
+        Backendless.initApp(APPLICATION_ID, JS_API_KEY);
+
         // Load custom fonts
         await fetchFonts();
         setFontLoaded(true);
@@ -67,10 +72,10 @@ export default function App() {
       <View style={styles.loaderContainer}>
         <Text>Failed to load fonts.</Text>
         <Button title="Retry" onPress={() => {
-      // Retrying font loading by resetting the fontLoaded state
-      setFontLoaded(false);
-      initializeApp(); // Call initialization again
-    }} />
+          // Retrying font loading by resetting the fontLoaded state
+          setFontLoaded(false);
+          initializeApp(); // Call initialization again
+        }} />
       </View>
     );
   }

@@ -4,6 +4,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import UserFeed from './userFeed';
 import Search from './search';
 import UserStackNavigator from '../navigation/userStack'; // Make sure the import path is correct
+import PostScreen from './postScreen';
+
 
 const Tab = createBottomTabNavigator();
 
@@ -12,6 +14,7 @@ const MainTab = () => {
     <Tab.Navigator>
       <Tab.Screen name="UserFeed" component={UserFeed} />
       <Tab.Screen name="Search" component={Search} />
+      <Tab.Screen name="PostScreen" component={PostScreen} options={{ headerShown: false }} />
       <Tab.Screen name="UserProfile" component={UserStackNavigator} options={{ headerShown: false }} />
     </Tab.Navigator>
   );
