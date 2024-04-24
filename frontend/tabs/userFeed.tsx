@@ -23,11 +23,23 @@ const UserFeed = () => {
     const fetchPosts = async () => {
         setRefreshing(true);
         try {
-            const response = await fetch('https://turgentloaf.backendless.app/api/data/Posts');
+            const response = await fetch('https://turgentloaf.backendless.app/api/data/Posts', {
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Add authentication headers if required
+                }
+            });
             if (!response.ok) {
                 throw new Error('Failed to fetch posts');
             }
             const postData: CustomPost[] = await response.json();
+            
+            // Assuming the API returns posts in no particular order
+            postData.sort((a, b) => {
+                // Ensure you convert the timestamp into a comparable format if it's not already a timestamp
+                return new Date(b.created).getTime() - new Date(a.created).getTime();
+            });
+    
             const postsWithUsers: PostWithUser[] = [];
     
             for (const post of postData) {

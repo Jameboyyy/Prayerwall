@@ -1,82 +1,109 @@
-import React, { useState } from 'react';
-import { View, TextInput, Alert, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, TextInput, Alert, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Backendless from 'backendless';
+import { CustomPost } from '../types';  // Ensure this path is correct
 
 const PostScreen = () => {
   const [postTitle, setPostTitle] = useState('');
   const [postContent, setPostContent] = useState('');
+  const [posts, setPosts] = useState<CustomPost[]>([]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
   const handlePostSubmit = async () => {
-    // Validate the post content (optional)
     if (!postContent.trim()) {
       Alert.alert('Error', 'Post content cannot be empty.');
       return;
     }
-  
-    // Prepare the post data
+
     const postData = {
       title: postTitle,
       content: postContent,
     };
-  
-    // Retrieve the current user's token from AsyncStorage
+
     const userToken = await AsyncStorage.getItem('user_token');
-  
     if (!userToken) {
       Alert.alert('Error', 'User token not found.');
       return;
     }
-  
-    // Send the post data to the Posts table
+
     const response = await fetch('https://api.backendless.com/98E9F92E-70F6-5F4D-FF47-A45B6253CB00/09FEE149-C7DF-47A3-944B-47A6769CDB21/data/Posts', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'user-token': userToken, // Include the user token in the request headers
+        'user-token': userToken,
       },
       body: JSON.stringify(postData),
     });
-  
+
     if (response.ok) {
       Alert.alert('Success', 'Post submitted successfully.');
-      // Reset title and content after successful submission
       setPostTitle('');
       setPostContent('');
-      // Optionally, you can navigate to another screen or perform any other actions
+      fetchPosts();  // Refetch posts to update the list
     } else {
-      // Log the response status and body if the request fails
-      console.log('Response status:', response.status);
-      response.text().then(text => {
-        console.log('Response body:', text);
-      });
+      const errorText = await response.text();
+      console.error('Failed to submit post:', errorText);
       Alert.alert('Error', 'Failed to submit post. Please try again later.');
+    }
+  };
+
+  const fetchPosts = async () => {
+    const userToken = await AsyncStorage.getItem('user_token');
+    if (userToken) {
+      const response = await fetch('https://api.backendless.com/98E9F92E-70F6-5F4D-FF47-A45B6253CB00/09FEE149-C7DF-47A3-944B-47A6769CDB21/data/Posts', {
+        headers: {
+          'Content-Type': 'application/json',
+          'user-token': userToken
+        }
+      });
+
+      if (response.ok) {
+        const fetchedPosts: CustomPost[] = await response.json();
+        console.log('Fetched posts:', fetchedPosts.map(post => ({ title: post.title, created: post.created }))); // Log fetched posts and their created field
+        fetchedPosts.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime()); // Sort by date
+        setPosts(fetchedPosts);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to fetch posts:', errorText);
+        Alert.alert('Error', 'Failed to fetch posts. Please try again later.');
+      }
     }
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.title_container}>
-        <Text style={styles.title}>Share Your Prayer Request</Text>
-        <Text style={styles.sub_title}>James 5: 14-15{"\n"}
-        Is anyone among you sick? Let him call for the elders of the church, and let them pray over him, anointing him with oil in the name of the Lord. And the prayer of faith will save the one who is sick, and the Lord will raise him up. And if he has committed sins, he will be forgiven. </Text>
-      </View>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter post title"
-        value={postTitle}
-        onChangeText={text => setPostTitle(text)}
-      />
-      <TextInput
-        style={[styles.input, { height: 200 }]}
-        placeholder="Enter post content"
-        value={postContent}
-        onChangeText={text => setPostContent(text)}
-        multiline={true}
-      />
-      <TouchableOpacity style={[styles.button, styles.postButton]} onPress={handlePostSubmit}>
-        <Text style={styles.buttonText}>Submit Post</Text>
-      </TouchableOpacity>
+      <ScrollView>
+        <View style={styles.title_container}>
+          <Text style={styles.title}>Share Your Prayer Request</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter post title"
+            value={postTitle}
+            onChangeText={setPostTitle}
+          />
+          <TextInput
+            style={[styles.input, { height: 200 }]}
+            placeholder="Enter post content"
+            value={postContent}
+            onChangeText={setPostContent}
+            multiline={true}
+          />
+          <TouchableOpacity style={[styles.button, styles.postButton]} onPress={handlePostSubmit}>
+            <Text style={styles.buttonText}>Submit Post</Text>
+          </TouchableOpacity>
+        </View>
+        {/* Display posts */}
+        {posts.map(post => (
+          <View key={post.objectId} style={styles.postContainer}>
+            <Text style={styles.postTitle}>{post.title}</Text>
+            <Text style={styles.postContent}>{post.content}</Text>
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 };
@@ -85,47 +112,60 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
-    backgroundColor: '#d2e7d6', // Set container background color
+    backgroundColor: '#d2e7d6',
   },
   title_container: {
-    marginBottom: 20, // Add spacing between title and input fields
+    marginBottom: 20,
   },
   title: {
-    fontSize: 24, // Increase font size for title
-    fontWeight: 'bold', // Apply bold font weight
-    color: '#3a506b', // Change title color
-    textAlign: 'center', // Center align the title
-  },
-  sub_title: {
-    fontSize: 16, // Adjust font size for subtitle
-    color: '#3a506b', // Change subtitle color
-    textAlign: 'center', // Center align the subtitle
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#3a506b',
   },
   input: {
-    height: 50,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
     padding: 10,
     marginBottom: 20,
+    backgroundColor: '#ffffff',
+    width: '100%',
   },
   button: {
-    width: '100%',
-    height: 50,
+    backgroundColor: '#3a506b',
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 5,
-    marginTop: 20,
+    height: 50,
+    width: '100%',
   },
   postButton: {
-    backgroundColor: '#3a506b', // Set button background color
+    marginTop: 20
+  },
+  postContainer: {
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#ccc'
+  },
+  postTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#3a506b'
+  },
+  postContent: {
+    fontSize: 16,
+    color: '#333',
+    marginTop: 5
   },
   buttonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
+    fontWeight: 'bold'
+  }
 });
 
 export default PostScreen;

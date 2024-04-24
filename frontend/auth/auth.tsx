@@ -1,9 +1,8 @@
-// auth.tsx
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import Backendless from 'backendless';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { CustomUser } from '@/userTypes';
+import { CustomUser } from '@/userTypes'; // Ensure this path is correctly set
 import { RootStackParamList } from '../navigationTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -33,50 +32,32 @@ const Auth: React.FC<AuthProps> = ({ navigation }) => {
         }
     
         try {
-            let user: CustomUser | null = null;
             if (authMode === 'login') {
-                user = await Backendless.UserService.login(form.email, form.password, true) as CustomUser;
+                // Safely attempt login only if email and password are defined
+                const user = await Backendless.UserService.login(form.email ?? "", form.password ?? "", true) as CustomUser;
+                navigation.navigate('MainTab', { screen: 'UserFeed' });
             } else {
-                // Register new user
-                const newUser = new Backendless.User() as CustomUser;
-                newUser.email = form.email;
-                newUser.password = form.password;
-                newUser.firstName = "Initial";
-                newUser.lastName = 'User';
-                newUser.userName = ""; 
-                newUser.profilePicture = 'https://res.cloudinary.com/dwey7oaba/image/upload/v1713607870/Default_Picture_ylyjcn.png';
-                user = await Backendless.UserService.register(newUser) as CustomUser;
-
-                // Login the user after registration
-                user = await Backendless.UserService.login(form.email, form.password, true) as CustomUser;
-            }
+                // Ensure email and password are checked for undefined before proceeding
+                const newUser = {
+                    email: form.email ?? "", // Default to empty string if undefined
+                    password: form.password ?? "", // Default to empty string if undefined
+                };
+                const registeredUser = await Backendless.UserService.register(newUser) as CustomUser;
     
-            if (user && user['user-token']) {
-                console.log('User token:', user['user-token']); // Check if user token is available
-                await AsyncStorage.setItem('user_token', user['user-token']);
-                console.log('User token stored successfully.'); // Log success message
-                // Now navigate to the appropriate screen
-                navigation.navigate('Account', { ownerId: user.objectId ?? '' });
-            } else {
-                throw new Error('Failed to retrieve user token.');
+                if (registeredUser && registeredUser.objectId) {
+                    console.log('User registered successfully:', registeredUser);
+                    const loggedUser = await Backendless.UserService.login(newUser.email, newUser.password, true) as CustomUser;
+                    await AsyncStorage.setItem('user_token', loggedUser['user-token'] as string);
+                    navigation.navigate('Account', { ownerId: registeredUser.objectId ?? '' });
+                } else {
+                    throw new Error('Failed to register user.');
+                }
             }
         } catch (error) {
             console.error('Login/Register Error:', error);
-            if (error instanceof Error) {
-                if (error.message.includes('Not existing user token')) {
-                    // Handle case where user token is not available immediately
-                    Alert.alert('User Token Unavailable', 'User token is not available immediately. Please log in again to update your user token.');
-                } else {
-                    Alert.alert('Error', error.message);
-                }
-            } else {
-                Alert.alert('Error', 'An unexpected error occurred');
-            }
+            Alert.alert('Error', error instanceof Error ? error.message : 'An unexpected error occurred');
         }
     };
-    
-    
-    
 
     const switchMode = () => {
         setAuthMode(authMode === 'login' ? 'signup' : 'login');
@@ -152,7 +133,8 @@ const styles = StyleSheet.create({
         height: 100,
     },
     form_container: {
-
+        width: '100%', // Ensure full width for alignment
+        paddingHorizontal: 20, // Padding for content inside form
     },
     label: {
         marginTop: 25,
@@ -161,12 +143,11 @@ const styles = StyleSheet.create({
     },
     input: {
         backgroundColor: '#ffffff',
-        width: 327,
+        width: '100%',
         height: 50,
         borderRadius: 2,
         padding: 10,
         marginBottom: 10,
-        marginTop: 5,
         borderWidth: 1,
         borderColor: 'gray',
         color: '#a9a9a9',
@@ -174,7 +155,7 @@ const styles = StyleSheet.create({
     },
     auth_btn: {
         backgroundColor: '#3a506b',
-        width: 327,
+        width: '100%',
         height: 50,
         justifyContent: 'center',
         alignItems: 'center',
@@ -188,7 +169,8 @@ const styles = StyleSheet.create({
         fontFamily: 'JosefinSans-Italic'
     },
     switch_btn: {
-        marginTop: 10
+        marginTop: 10,
+        width: '100%',
     },
     switch_btn_text: {
         color: '#000000',

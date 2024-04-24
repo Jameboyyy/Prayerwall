@@ -1,4 +1,3 @@
-// account.tsx
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, Text, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import Backendless from 'backendless';
@@ -20,25 +19,29 @@ const Account: React.FC<AccountProps> = ({ route, navigation }) => {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [userName, setUsername] = useState('');
-
     useEffect(() => {
-        const checkUserSession = async () => {
-            const user = await Backendless.UserService.getCurrentUser() as CustomUser | null;
-            if (!user) {
-                Alert.alert('Error', 'User session not found. Please log in again.');
-                // You may navigate the user back to the login screen or handle the situation as appropriate
-                return;
+        const fetchCurrentUser = async () => {
+            try {
+                const currentUser = await Backendless.UserService.getCurrentUser();
+                if (!currentUser) {
+                    throw new Error('User session not found.');
+                }
+                // Set user data to state if needed
+            } catch (error) {
+                console.error('User session check error:', error);
+                Alert.alert('Session Error', 'Please log in again.');
+                navigation.replace('Auth'); // Navigate back to login
             }
         };
-
-        checkUserSession();
+    
+        fetchCurrentUser();
     }, []);
 
     const handleSave = async () => {
         const user = await Backendless.UserService.getCurrentUser() as CustomUser | null;
         if (!user) {
             Alert.alert('Error', 'User session not found. Please log in again.');
-            // You may navigate the user back to the login screen or handle the situation as appropriate
+            navigation.replace('Auth'); // Redirect to login screen
             return;
         }
 
