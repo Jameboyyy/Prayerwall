@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, ActivityIndicator, Alert, Image, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, Image, ScrollView, RefreshControl, StyleSheet, TouchableOpacity } from 'react-native';
 import Backendless from 'backendless';
 import { useNavigation } from '@react-navigation/native';
-import { User, CustomPost } from '../types'; // Ensure these types are correct
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faUsers, faUserGroup, faEdit } from '@fortawesome/free-solid-svg-icons';
+import { User, CustomPost } from '../types';
 import { UserProfileNavigationProp } from '../navigationTypes';
 
 const UserProfile: React.FC = () => {
@@ -25,8 +25,11 @@ const UserProfile: React.FC = () => {
       }
       const queryBuilder = Backendless.DataQueryBuilder.create();
       queryBuilder.setRelated(["userPosts", "userFollowing", "userFollowers"]);
-      queryBuilder.setSortBy(["userPosts.created DESC"]); // Ensure sorting is applied
-      const user = await Backendless.Data.of("Users").findById(currentUser.objectId, queryBuilder);
+      queryBuilder.setSortBy(["userPosts.created DESC"]); // Sorting posts by creation date
+      const user = await Backendless.Data.of("Users").findById<User>(currentUser.objectId, queryBuilder);
+      if (!user) {
+        throw new Error('User not found');
+      }
       console.log('Fetched user with posts:', user);
       setUserProfile(user);
       setUserPosts(user.userPosts || []);
@@ -38,7 +41,6 @@ const UserProfile: React.FC = () => {
       setRefreshing(false);
     }
   }, []);
-  
 
   useEffect(() => {
     fetchUserProfile();
@@ -53,17 +55,6 @@ const UserProfile: React.FC = () => {
     return userProfile?.profilePicture ? 
       <Image source={{ uri: userProfile.profilePicture }} style={styles.profileImage} /> :
       <Image source={{ uri: 'https://res.cloudinary.com/dwey7oaba/image/upload/v1713607870/Default_Picture_ylyjcn.png' }} style={styles.profileImage} />;
-  };
-
-  const renderPosts = () => {
-    console.log('Rendering posts:', userPosts);
-    return userPosts.map((post, index) => (
-      <View key={index} style={styles.postContainer}>
-        <Text style={styles.postTitle}>{post.title}</Text>
-        <Text style={styles.postContent}>{post.content}</Text>
-        <Text style={styles.postDate}>{new Date(post.created).toLocaleDateString()}</Text>
-      </View>
-    ));
   };
 
   if (loading) {
@@ -81,9 +72,7 @@ const UserProfile: React.FC = () => {
   return (
     <ScrollView
       contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       {renderProfilePicture()}
       <Text style={styles.username}>{userProfile.userName}</Text>
@@ -92,16 +81,22 @@ const UserProfile: React.FC = () => {
       </View>
       <View style={styles.statsContainer}>
         <FontAwesomeIcon icon={faUserGroup} size={16} color="#4f9deb" />
-        <Text style={styles.statsText}> {userProfile.userFollowing?.length || 0} Following</Text>
+        <Text style={styles.statsText}>{userProfile.userFollowing?.length || 0} Following</Text>
         <FontAwesomeIcon icon={faUsers} size={16} color="#4f9deb" />
-        <Text style={styles.statsText}> {userProfile.userFollowers?.length || 0} Followers</Text>
+        <Text style={styles.statsText}>{userProfile.userFollowers?.length || 0} Followers</Text>
         <Text style={styles.statsText}>Posts: {userPosts.length}</Text>
       </View>
-      {renderPosts()}
       <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('UserStackEditProfile')}>
         <FontAwesomeIcon icon={faEdit} size={24} color="white" />
         <Text style={styles.buttonText}>Edit Profile Details</Text>
       </TouchableOpacity>
+      {userPosts.map((post, index) => (
+        <View key={index} style={styles.postContainer}>
+          <Text style={styles.postTitle}>{post.title}</Text>
+          <Text style={styles.postContent}>{post.content}</Text>
+          <Text style={styles.postDate}>{new Date(post.created).toLocaleDateString()}</Text>
+        </View>
+      ))}
     </ScrollView>
   );
 };

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import Backendless from 'backendless';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { CustomUser } from '@/userTypes'; // Ensure this path is correctly set
-import { RootStackParamList } from '../navigationTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../navigationTypes';
+import { CustomUser }  from '../userTypes';
 
 type AuthProps = {
     navigation: StackNavigationProp<RootStackParamList, 'Auth'>;
@@ -33,24 +33,24 @@ const Auth: React.FC<AuthProps> = ({ navigation }) => {
     
         try {
             if (authMode === 'login') {
-                // Safely attempt login only if email and password are defined
-                const user = await Backendless.UserService.login(form.email ?? "", form.password ?? "", true) as CustomUser;
-                navigation.navigate('MainTab', { screen: 'UserFeed' });
+                const user = await Backendless.UserService.login(form.email, form.password, true) as CustomUser;
+                if (user && user['user-token']) {
+                    await AsyncStorage.setItem('user_token', user['user-token']);
+                    navigation.navigate('MainTab', { screen: 'UserFeed' });
+                }
             } else {
-                // Ensure email and password are checked for undefined before proceeding
                 const newUser = {
-                    email: form.email ?? "", // Default to empty string if undefined
-                    password: form.password ?? "", // Default to empty string if undefined
+                    email: form.email,
+                    password: form.password,
                 };
                 const registeredUser = await Backendless.UserService.register(newUser) as CustomUser;
-    
                 if (registeredUser && registeredUser.objectId) {
                     console.log('User registered successfully:', registeredUser);
-                    const loggedUser = await Backendless.UserService.login(newUser.email, newUser.password, true) as CustomUser;
-                    await AsyncStorage.setItem('user_token', loggedUser['user-token'] as string);
-                    navigation.navigate('Account', { ownerId: registeredUser.objectId ?? '' });
-                } else {
-                    throw new Error('Failed to register user.');
+                    const loginResponse = await Backendless.UserService.login(newUser.email, newUser.password, true) as CustomUser;
+                    if (loginResponse && loginResponse['user-token']) {
+                        await AsyncStorage.setItem('user_token', loginResponse['user-token']);
+                        navigation.navigate('Account', { ownerId: registeredUser.objectId });
+                    }
                 }
             }
         } catch (error) {
@@ -58,6 +58,7 @@ const Auth: React.FC<AuthProps> = ({ navigation }) => {
             Alert.alert('Error', error instanceof Error ? error.message : 'An unexpected error occurred');
         }
     };
+    
 
     const switchMode = () => {
         setAuthMode(authMode === 'login' ? 'signup' : 'login');
@@ -86,7 +87,7 @@ const Auth: React.FC<AuthProps> = ({ navigation }) => {
                     onChangeText={(value) => handleInputChange('password', value)}
                     value={form.password}
                     placeholder="Password"
-                    secureTextEntry
+                    secureTextEntry={true}
                     placeholderTextColor="#a9a9a9"
                 />
                 <TouchableOpacity
@@ -133,8 +134,8 @@ const styles = StyleSheet.create({
         height: 100,
     },
     form_container: {
-        width: '100%', // Ensure full width for alignment
-        paddingHorizontal: 20, // Padding for content inside form
+        width: '100%',
+        paddingHorizontal: 20,
     },
     label: {
         marginTop: 25,

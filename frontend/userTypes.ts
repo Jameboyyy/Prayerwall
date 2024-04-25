@@ -9,5 +9,6 @@ export interface CustomUser extends Backendless.User {
     userName?: string;
     profilePicture: string;
     'user-token'?: string;
+    objectId?: string;
   }
   
