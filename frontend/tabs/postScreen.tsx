@@ -8,49 +8,51 @@ const PostScreen = () => {
   const [postContent, setPostContent] = useState('');
 
   const handlePostSubmit = async () => {
-    // Validate the post content (optional)
     if (!postContent.trim()) {
       Alert.alert('Error', 'Post content cannot be empty.');
       return;
     }
   
-    // Prepare the post data
+    const userToken = await AsyncStorage.getItem('user_token');
+    const userId = await AsyncStorage.getItem('user_id');  // Retrieve the user's objectId stored during login
+
+    if (!userToken || !userId) {
+      Alert.alert('Error', 'User token or user ID not found.');
+      return;
+    }
+
     const postData = {
       title: postTitle,
       content: postContent,
+      ownerId: userId  // Use the stored user objectId
     };
   
-    // Retrieve the current user's token from AsyncStorage
-    const userToken = await AsyncStorage.getItem('user_token');
-  
-    if (!userToken) {
-      Alert.alert('Error', 'User token not found.');
-      return;
-    }
-  
-    // Send the post data to the Posts table
-    const response = await fetch('https://api.backendless.com/98E9F92E-70F6-5F4D-FF47-A45B6253CB00/09FEE149-C7DF-47A3-944B-47A6769CDB21/data/Posts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'user-token': userToken, // Include the user token in the request headers
-      },
-      body: JSON.stringify(postData),
-    });
-  
-    if (response.ok) {
-      Alert.alert('Success', 'Post submitted successfully.');
-      // Optionally, you can navigate to another screen or perform any other actions
-    } else {
-      // Log the response status and body if the request fails
-      console.log('Response status:', response.status);
-      response.text().then(text => {
-        console.log('Response body:', text);
+    try {
+      const response = await fetch('https://api.backendless.com/98E9F92E-70F6-5F4D-FF47-A45B6253CB00/09FEE149-C7DF-47A3-944B-47A6769CDB21/data/Posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'user-token': userToken,
+        },
+        body: JSON.stringify(postData),
       });
-      Alert.alert('Error', 'Failed to submit post. Please try again later.');
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to submit post:', errorText);
+        Alert.alert('Error', 'Failed to submit post. Please try again later.');
+        return;
+      }
+  
+      Alert.alert('Success', 'Post submitted successfully.');
+      setPostTitle('');
+      setPostContent('');
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     }
   };
-
+  
   return (
     <View style={styles.container}>
       <TextInput

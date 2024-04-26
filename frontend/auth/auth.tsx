@@ -33,9 +33,10 @@ const Auth: React.FC<AuthProps> = ({ navigation }) => {
     
         try {
             if (authMode === 'login') {
-                const user = await Backendless.UserService.login(form.email, form.password, true) as CustomUser;
-                if (user && user['user-token']) {
+                const user = await Backendless.UserService.login(form.email, form.password, true);
+                if (user) {
                     await AsyncStorage.setItem('user_token', user['user-token']);
+                    await AsyncStorage.setItem('user_id', user.objectId); // Save user ObjectID
                     navigation.navigate('MainTab', { screen: 'UserFeed' });
                 }
             } else {
@@ -43,12 +44,12 @@ const Auth: React.FC<AuthProps> = ({ navigation }) => {
                     email: form.email,
                     password: form.password,
                 };
-                const registeredUser = await Backendless.UserService.register(newUser) as CustomUser;
-                if (registeredUser && registeredUser.objectId) {
-                    console.log('User registered successfully:', registeredUser);
-                    const loginResponse = await Backendless.UserService.login(newUser.email, newUser.password, true) as CustomUser;
-                    if (loginResponse && loginResponse['user-token']) {
+                const registeredUser = await Backendless.UserService.register(newUser);
+                if (registeredUser) {
+                    const loginResponse = await Backendless.UserService.login(newUser.email, newUser.password, true);
+                    if (loginResponse) {
                         await AsyncStorage.setItem('user_token', loginResponse['user-token']);
+                        await AsyncStorage.setItem('user_id', loginResponse.objectId); // Save user ObjectID
                         navigation.navigate('Account', { ownerId: registeredUser.objectId });
                     }
                 }
