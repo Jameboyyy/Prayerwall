@@ -15,10 +15,7 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Your message here."
-      }
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {

@@ -1,184 +1,158 @@
 import React, { useState } from 'react';
-import { View, TextInput, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
-import Backendless from 'backendless';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import auth from '@react-native-firebase/auth'
+import { useNavigation } from '@react-navigation/native';
+import { firebaseUser, RootParamList, MainScreenParamList } from '../types/types'
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../navigationTypes';
-import { CustomUser }  from '../userTypes';
 
-type AuthProps = {
-    navigation: StackNavigationProp<RootStackParamList, 'Auth'>;
-};
+export type CombinedParamList = RootParamList & MainScreenParamList;
 
-type AuthMode = 'login' | 'signup';
+const Auth = () => {
+    const navigation = useNavigation<StackNavigationProp<CombinedParamList, 'Auth'>>();
+    const [isSignUp, setIsSignUp] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
 
-interface UserForm {
-    email: string;
-    password: string;
-}
-
-const Auth: React.FC<AuthProps> = ({ navigation }) => {
-    const [authMode, setAuthMode] = useState<AuthMode>('login');
-    const [form, setForm] = useState<UserForm>({ email: '', password: '' });
-
-    const handleInputChange = (name: keyof UserForm, value: string) => {
-        setForm({ ...form, [name]: value });
-    };
-
-    const handleSubmit = async () => {
-        if (!form.email || !form.password) {
-            Alert.alert('Error', 'Please fill all fields.');
-            return;
-        }
-    
-        try {
-            if (authMode === 'login') {
-                const user = await Backendless.UserService.login(form.email, form.password, true);
-                if (user) {
-                    await AsyncStorage.setItem('user_token', user['user-token']);
-                    await AsyncStorage.setItem('user_id', user.objectId); // Save user ObjectID
-                    navigation.navigate('MainTab', { screen: 'UserFeed' });
-                }
-            } else {
-                const newUser = {
-                    email: form.email,
-                    password: form.password,
+    const handleSignUp = () => {
+        auth().createUserWithEmailAndPassword(email, password)
+            .then(userCredentials => {
+                const user: firebaseUser = {
+                    uid: userCredentials.user.uid,
+                    email: userCredentials.user.email,
+                    displayName: userCredentials.user.displayName,
                 };
-                const registeredUser = await Backendless.UserService.register(newUser);
-                if (registeredUser) {
-                    const loginResponse = await Backendless.UserService.login(newUser.email, newUser.password, true);
-                    if (loginResponse) {
-                        await AsyncStorage.setItem('user_token', loginResponse['user-token']);
-                        await AsyncStorage.setItem('user_id', loginResponse.objectId); // Save user ObjectID
-                        navigation.navigate('Account', { ownerId: registeredUser.objectId });
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Login/Register Error:', error);
-            Alert.alert('Error', error instanceof Error ? error.message : 'An unexpected error occurred');
-        }
+                console.log('User account created & signed in!');
+                navigation.navigate('Account', { user: user });  // Make sure 'Account' expects a parameter
+            })
+            .catch(error => {
+                console.error(error);
+            });
     };
     
-
-    const switchMode = () => {
-        setAuthMode(authMode === 'login' ? 'signup' : 'login');
+    const handleLogin = () => {
+        auth().signInWithEmailAndPassword(email, password)
+            .then(userCredentials => {
+                const user: firebaseUser = {
+                    uid: userCredentials.user.uid,
+                    email: userCredentials.user.email,
+                    displayName: userCredentials.user.displayName
+                };
+                console.log('User logged in!');
+                navigation.navigate('UserFeed');  // Assuming 'UserFeed' does not expect any parameters
+            })
+            .catch(error => {
+                console.error(error);
+            });
     };
+
+    
 
     return (
         <View style={styles.container}>
             <View style={styles.title_container}>
                 <Text style={styles.title}>Prayerwall</Text>
-                <Image source={require('../assets/pw_logo.png')} style={styles.logo} />
+                <Image
+                    style={styles.logo}
+                    source={require('../assets/logo.png')}
+                />
             </View>
-            <View style={styles.form_container}>
+            <View style={styles.fullWidthContainer}>
                 <Text style={styles.label}>Email</Text>
-                <TextInput
-                    style={styles.input}
-                    onChangeText={(value) => handleInputChange('email', value)}
-                    value={form.email}
-                    placeholder="Email"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    placeholderTextColor="#a9a9a9"
-                />
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                    style={styles.input}
-                    onChangeText={(value) => handleInputChange('password', value)}
-                    value={form.password}
-                    placeholder="Password"
-                    secureTextEntry={true}
-                    placeholderTextColor="#a9a9a9"
-                />
-                <TouchableOpacity
-                    style={styles.auth_btn}
-                    onPress={handleSubmit}
-                    disabled={form.email === '' || form.password === ''}
-                >
-                    <Text style={styles.auth_btn_text}>{authMode === 'login' ? 'Login' : 'Sign Up'}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.switch_btn}
-                    onPress={switchMode}
-                >
-                    <Text style={styles.switch_btn_text}>
-                        {authMode === 'login' ? "Don't have an account? Sign Up" : "Have an account already? Log In"}
-                    </Text>
-                </TouchableOpacity>
             </View>
+            <TextInput
+                style={styles.input}
+                onChangeText={setEmail}
+                value={email}
+                placeholder="email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+            />
+            <View style={styles.fullWidthContainer}>
+                <Text style={styles.label}>Password</Text>
+            </View>
+            <TextInput
+                style={styles.input}
+                onChangeText={setPassword}
+                value={password}
+                placeholder="password"
+                secureTextEntry={true}
+            />
+            {isSignUp ? (
+                <TouchableOpacity style={styles.button} onPress={handleSignUp}>
+                    <Text style={styles.buttonText}>Sign Up</Text>
+                </TouchableOpacity>
+            ) : (
+                <TouchableOpacity style={styles.button} onPress={handleLogin}>
+                    <Text style={styles.buttonText}>Log In</Text>
+                </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
+                <Text style={styles.sub_button}>{isSignUp ? "Have an account already? Log In!" : "Don't have an account? Sign Up!"}</Text>
+            </TouchableOpacity>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        height: '100%',
-        alignItems: 'center',
+        flex: 1,
+        justifyContent: 'center',
         backgroundColor: '#d2e7d6',
+        alignItems: 'center',
+        padding: 20,
     },
     title_container: {
         flexDirection: 'row',
-        justifyContent: 'center',
         alignItems: 'center',
-        marginTop: '25%',
+        justifyContent: 'center',
+        marginBottom: 20,
     },
-    title: {
-        fontSize: 32,
-        color: '#3a506b',
-        fontWeight: '600',
-        textAlign: 'center',
-        fontFamily: 'JosefinSans-Bold',
+    fullWidthContainer: {
+        alignSelf: 'stretch',
+        marginTop: 20
     },
     logo: {
-        width: 40,
+        width: 50,
         height: 100,
     },
-    form_container: {
-        width: '100%',
-        paddingHorizontal: 20,
+    title: {
+        fontSize: 48,
+        color: '#3a506b',
+        fontFamily: 'JosefinSans-Regular'
     },
     label: {
-        marginTop: 25,
+        color: 'black',
         fontSize: 16,
-        fontFamily: 'JosefinSans-Regular',
+        marginBottom: 5,
+        fontFamily: 'JosefinSans-Regular'
     },
     input: {
-        backgroundColor: '#ffffff',
-        width: '100%',
+        width: '100%', // Adjust this if necessary
         height: 50,
-        borderRadius: 2,
         padding: 10,
         marginBottom: 10,
         borderWidth: 1,
-        borderColor: 'gray',
-        color: '#a9a9a9',
-        fontFamily: 'JosefinSans-Regular',
+        backgroundColor: 'white',
+        borderColor: 'white',
+        borderRadius: 5,
+        fontFamily: 'JosefinSans-Regular'
     },
-    auth_btn: {
+    button: {
         backgroundColor: '#3a506b',
         width: '100%',
-        height: 50,
-        justifyContent: 'center',
+        padding: 10,
         alignItems: 'center',
-        borderRadius: 2,
-        marginTop: 25,
+        borderRadius: 5,
+        marginTop: 30,
     },
-    auth_btn_text: {
-        color: '#ffffff',
+    buttonText: {
+        color: 'white',
         fontSize: 16,
-        fontWeight: 'bold',
-        fontFamily: 'JosefinSans-Italic'
+        fontFamily: 'JosefinSans-Regular'
     },
-    switch_btn: {
+    sub_button: {
         marginTop: 10,
-        width: '100%',
-    },
-    switch_btn_text: {
-        color: '#000000',
-        fontFamily: 'JosefinSans-Regular',
-        fontSize: 14,
-        textAlign: 'right'
+        fontFamily: 'JosefinSans-Regular'
     }
 });
 
