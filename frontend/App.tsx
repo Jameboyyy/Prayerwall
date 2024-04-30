@@ -1,46 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
-import Auth from './auth/auth';
-import Account from './auth/account';
-import UserFeed from './screens/userFeed';
-import * as Font from 'expo-font';
-import { RootParamList } from './types/types';
-import { MainScreenParamList } from './types/types';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import AppNavigator from './navigation/appNavigator';
+import { useFonts } from 'expo-font';
+import './firebaseConfig';
 
-const RootStack = createStackNavigator<RootParamList>();
-const MainTab = createBottomTabNavigator<MainScreenParamList>();
-
-const App = () => {
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-
-  useEffect(() => {
-    const loadFonts = async () => {
-      await Font.loadAsync({
-        'JosefinSans-Regular': require('./fonts/JosefinSans-Regular.ttf'),
-        'JosefinSans-Italic': require('./fonts/JosefinSans-Italic.ttf'),
-        'JosefinSans-Bold': require('./fonts/JosefinSans-Bold.ttf'),
-      });
-      setFontsLoaded(true);
-    };
-    
-    loadFonts();
-  }, []);
+export default function App() {
+  const [fontsLoaded] = useFonts({
+    'JosefinSans-Regular': require('./fonts/JosefinSans-Regular.ttf'),
+    'JosefinSans-Bold': require('./fonts/JosefinSans-Bold.ttf'),
+    'JosefinSans-Italic': require('./fonts/JosefinSans-Italic.ttf'),
+  });
 
   if (!fontsLoaded) {
-    return null; // Or some loading component
+    return <View style={styles.container}><Text>Loading...</Text></View>;
   }
-
+  console.log('App is rendering');  // Check if this logs in your console
   return (
-    <NavigationContainer>
-      <RootStack.Navigator>
-        <RootStack.Screen name="Auth" component={Auth} options={{ headerShown: false }} />
-        <RootStack.Screen name="Account" component={Account} options={{ headerShown: false }} />
-        <MainTab.Screen name="UserFeed" component={UserFeed} />
-      </RootStack.Navigator>
-    </NavigationContainer>
+    <View style={styles.container}>
+      <AppNavigator />
+    </View>
   );
-};
+}
 
-export default App;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+});

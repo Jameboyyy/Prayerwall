@@ -1,36 +1,64 @@
-// NavigationSetup.ts
-import { createStackNavigator } from '@react-navigation/stack';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import Auth from '../auth/auth';
-import Account from '../auth/account';
+import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
+import Auth from '../screens/auth';
+import Account from '../screens/account';
 import UserFeed from '../screens/userFeed';
 import Search from '../screens/search';
 import Post from '../screens/post';
-import Notifications from '../screens/notifications';
+import Notification from '../screens/notification';
 import Profile from '../screens/profile';
-import { RootParamList, MainScreenParamList } from '../types/types';
+import EditProfile from '../screens/editProfile';
+import SearchedProfile from '../screens/SearchedProfile';
+import GroupChat from '../screens/groupChat';
+import EditPost from '../screens/editPost';
 
-const RootStack = createStackNavigator<RootParamList>();
-const MainStack = createStackNavigator<MainScreenParamList>();
+const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+const ProfileStack = createStackNavigator();
+const UserFeedStack = createStackNavigator();
 
 const AppNavigator = () => {
   return (
     <NavigationContainer>
-      <RootStack.Navigator initialRouteName="Auth">
-        <RootStack.Screen name="Auth" component={Auth} />
-        <RootStack.Screen name="Account" component={Account} />
-      </RootStack.Navigator>
-      <MainStack.Navigator>
-        <MainStack.Screen name="UserFeed" component={UserFeed} />
-        <MainStack.Screen name="Search" component={Search} />
-        <MainStack.Screen name="Post" component={Post} />
-        <MainStack.Screen name="Notifications" component={Notifications} />
-        <MainStack.Screen 
-            name="Profile" 
-            component={Profile}
-            options={({ route }) => ({ title: route.params.userId })} />
-      </MainStack.Navigator>
+      <Stack.Navigator initialRouteName="Auth">
+        <Stack.Screen name="Auth" component={Auth} options={{ headerShown: false }} />
+        <Stack.Screen name="Account" component={Account} options={{ headerShown: false }} />
+        <Stack.Screen name="Main" component={MainTabNavigator} options={{ headerShown: false }} />
+      </Stack.Navigator>
     </NavigationContainer>
+  );
+};
+
+const MainTabNavigator = () => {
+  return (
+    <Tab.Navigator>
+      <Tab.Screen name="UserFeedTab" component={UserFeedStackScreen} />
+      <Tab.Screen name="Search" component={Search} />
+      <Tab.Screen name="Post" component={Post} />
+      <Tab.Screen name="Notification" component={Notification} />
+      <Tab.Screen name="ProfileTab" component={ProfileStackNavigator} />
+    </Tab.Navigator>
+  );
+};
+
+const UserFeedStackScreen = () => {
+  return (
+    <UserFeedStack.Navigator>
+      <UserFeedStack.Screen name="UserFeed" component={UserFeed} />
+      <UserFeedStack.Screen name="EditPost" component={EditPost} />
+    </UserFeedStack.Navigator>
+  );
+};
+
+const ProfileStackNavigator = () => {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="Profile" component={Profile} />
+      <ProfileStack.Screen name="EditProfile" component={EditProfile} />
+    </ProfileStack.Navigator>
   );
 };
 

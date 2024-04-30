@@ -1,20 +1,23 @@
-
-
-export interface firebaseUser {
-    uid: string;
-    email?: string | null;
-    displayName?: string | null;
-}
-
 export type RootParamList = {
     Auth: undefined;
-    Account: { user: firebaseUser };
+    Account: undefined;
+    Main: undefined;
+    EditPost: { postId: string};
+    UserFeed: undefined;
 };
 
-export type MainScreenParamList = {
+export type MainTabParamList = {
     UserFeed: undefined;
     Search: undefined;
     Post: undefined;
-    Notifications: undefined;
-    Profile: { userId: string };
+    Notification: undefined;
+    ProfileTab: undefined;  // This now points to the ProfileStack
+    Main: undefined;
+};
+
+export type SecondaryScreenParamList = {
+    EditProfile: undefined;
+    SearchedProfile: undefined;
+    GroupChat: undefined;
+    EditPost: { postId: string};
 };

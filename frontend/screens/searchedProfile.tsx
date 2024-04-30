@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-const Search = () => {
+const SearchedProfile = () => {
     return (
         <View>
             
@@ -11,4 +11,4 @@ const Search = () => {
 
 const styles = StyleSheet.create({})
 
-export default Search;
+export default SearchedProfile;
