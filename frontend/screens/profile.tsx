@@ -11,8 +11,6 @@ type UserProfile = {
     firstName: string;
     lastName: string;
     profilePicture: string | null;
-    following: number;
-    followers: number;
     posts: number;
 };
 
@@ -30,8 +28,6 @@ const Profile = ({ navigation }) => {
         firstName: '',
         lastName: '',
         profilePicture: null,
-        following: 0,
-        followers: 0,
         posts: 0
     });
     const [posts, setPosts] = useState<Post[]>([]);
@@ -107,8 +103,6 @@ const Profile = ({ navigation }) => {
             <Text style={styles.username}>{user.username}</Text>
             <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
             <View style={styles.statsContainer}>
-                <Text style={styles.stat}>{`Following: ${user.following}`}</Text>
-                <Text style={styles.stat}>{`Followers: ${user.followers}`}</Text>
                 <Text style={styles.stat}>{`Posts: ${user.posts}`}</Text>
             </View>
             <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EditProfile')}>
@@ -136,7 +130,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         alignItems: 'center',
         backgroundColor: '#d2e7d6',
-        paddingVertical: 20
+        paddingVertical: 20,
     },
     profilePic: {
         width: 100,
@@ -144,7 +138,8 @@ const styles = StyleSheet.create({
         borderRadius: 50,
         marginBottom: 20,
         borderColor: '#ccc',
-        borderWidth: 1
+        borderWidth: 1,
+        marginTop: 50
     },
     username: {
         fontSize: 16,
@@ -175,7 +170,8 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         width: '85%',
         alignItems: 'center',
-        marginTop: 10
+        marginTop: 10,
+        marginBottom: 25,
     },
     buttonText: {
         color: '#fff',
@@ -183,7 +179,7 @@ const styles = StyleSheet.create({
         fontFamily: 'JosefinSans-Regular'
     },
     postsContainer: {
-        marginTop: 20,
+        marginTop: 50,
         width: '100%',
         alignItems: 'center'
     },

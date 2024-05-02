@@ -1,170 +1,151 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Image, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDoc, collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import { useNavigation } from '@react-navigation/native';
+import { firestore } from '../firebaseConfig';
+import * as ImagePicker from 'expo-image-picker';
 
-// Define the types for better code management
-type UserProfile = {
+interface UserProfile {
     username: string;
     firstName: string;
     lastName: string;
-    profilePicture: string | null;
-    following: number;
-    followers: number;
-    posts: number;
-};
+    profilePicture: string;
+}
 
-type Post = {
-    id: string;
-    title: string;
-    content: string;
-    createdAt: string; // Using string for simplicity in display
-    userId: string;
-};
-
-const Profile = () => {
-    const [user, setUser] = useState<UserProfile | null>(null);
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [refreshing, setRefreshing] = useState(false);
+const EditProfile = () => {
+    const [user, setUser] = useState<UserProfile>({
+        username: '',
+        firstName: '',
+        lastName: '',
+        profilePicture: ''
+    });
 
     const auth = getAuth();
-    const firestore = getFirestore();
-    const navigation = useNavigation();
-
     const userId = auth.currentUser?.uid;
 
     useEffect(() => {
-        const fetchUserData = async () => {
-            if (userId) {
-                const userDocRef = doc(firestore, "users", userId);
-                const userDoc = await getDoc(userDocRef);
-                if (userDoc.exists()) {
-                    setUser(userDoc.data() as UserProfile);
+        if (userId) {
+            const fetchUserData = async () => {
+                const docRef = doc(firestore, "users", userId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    setUser(docSnap.data() as UserProfile);
+                } else {
+                    console.log("No such document!");
                 }
-            }
-        };
-
-        const fetchPosts = async () => {
-            if (userId) {
-                const postsQuery = query(collection(firestore, "posts"), where("userId", "==", userId), orderBy("createdAt", "desc"));
-                const unsubscribe = onSnapshot(postsQuery, (snapshot) => {
-                    const postsData = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data(),
-                        createdAt: doc.data().createdAt.toDate().toLocaleDateString()
-                    })) as Post[];
-                    setPosts(postsData);
-                });
-                return unsubscribe;
-            }
-        };
-
-        fetchUserData();
-        const unsubscribeFromPosts = fetchPosts();
-
-        return () => {
-            unsubscribeFromPosts && unsubscribeFromPosts();
-        };
+            };
+            fetchUserData();
+        }
     }, [userId]);
 
-    const onRefresh = () => {
-        setRefreshing(true);
-        Promise.all([fetchUserData()]).then(() => {
-            setRefreshing(false);
+    const handleImagePick = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            alert('Sorry, we need camera roll permissions to make this work!');
+            return;
+        }
+    
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 1,
         });
+    
+        console.log('Image Picker Result:', result);
+    
+        if (!result.cancelled && result.assets && result.assets.length > 0) {
+            const uri = result.assets[0].uri;
+            setUser(prevState => ({ ...prevState, profilePicture: uri }));
+            console.log('Profile picture updated:', uri);
+        } else {
+            console.log('Image picker was cancelled or no URI found');
+        }
+    };
+    
+    
+    const saveChanges = async () => {
+        if (!userId) return;
+        try {
+            const userRef = doc(firestore, "users", userId);
+            await updateDoc(userRef, {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                profilePicture: user.profilePicture,
+            });
+            Alert.alert('Update Successful', 'Your profile has been updated.');
+        } catch (error) {
+            console.error('Error updating user:', error);
+            Alert.alert('Error', 'Failed to update profile.');
+        }
     };
 
     return (
-        <ScrollView
-            contentContainerStyle={styles.container}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        >
-            {user && (
-                <>
-                    {user.profilePicture ? (
-                        <Image source={{ uri: user.profilePicture }} style={styles.profilePic} />
-                    ) : (
-                        <Text>No Profile Picture</Text>
-                    )}
-                    <Text style={styles.username}>{user.username}</Text>
-                    <Text style={styles.name}>{`${user.firstName} ${user.lastName}`}</Text>
-                    <View style={styles.statsContainer}>
-                        <Text style={styles.stat}>{`Following: ${user.following}`}</Text>
-                        <Text style={styles.stat}>{`Followers: ${user.followers}`}</Text>
-                        <Text style={styles.stat}>{`Posts: ${user.posts}`}</Text>
-                    </View>
-                </>
+        <View style={styles.container}>
+            {user.profilePicture ? (
+                <Image
+                    source={{ uri: user.profilePicture }}
+                    style={styles.profilePic}
+                />
+            ) : (
+                <Text>No Profile Picture</Text>
             )}
-            {posts.map(post => (
-                <View key={post.id} style={styles.postContainer}>
-                    <Text style={styles.postTitle}>{post.title}</Text>
-                    <Text>{post.content}</Text>
-                    <Text style={styles.postDate}>{post.createdAt}</Text>
-                    {userId === post.userId && (
-                        <TouchableOpacity
-                            style={styles.editButton}
-                            onPress={() => navigation.navigate('EditPost', { postId: post.id })}
-                        >
-                            <FontAwesome5 name="edit" size={20} color="#000" />
-                        </TouchableOpacity>
-                    )}
-                </View>
-            ))}
-        </ScrollView>
+            <TextInput
+                style={styles.input}
+                value={user.firstName}
+                onChangeText={text => setUser(prev => ({ ...prev, firstName: text }))}
+                placeholder="First Name"
+            />
+            <TextInput
+                style={styles.input}
+                value={user.lastName}
+                onChangeText={text => setUser(prev => ({ ...prev, lastName: text }))}
+                placeholder="Last Name"
+            />
+            <TouchableOpacity style={styles.button} onPress={handleImagePick}>
+                <Text style={styles.buttonText}>Change Profile Picture</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={saveChanges}>
+                <Text style={styles.buttonText}>Save Changes</Text>
+            </TouchableOpacity>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        flexGrow: 1,
+        flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 10
+        backgroundColor: '#d2e7d6',
     },
     profilePic: {
         width: 100,
         height: 100,
         borderRadius: 50,
-        marginBottom: 10
+        marginBottom: 20,
     },
-    username: {
-        fontSize: 18,
-        fontWeight: 'bold'
-    },
-    name: {
-        fontSize: 16,
-        marginBottom: 5
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        width: '100%',
-        marginBottom: 10
-    },
-    stat: {
-        fontSize: 14
-    },
-    postContainer: {
-        width: '100%',
+    input: {
+        width: '85%',
         padding: 10,
-        marginBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#ccc'
+        marginVertical: 10,
+        borderWidth: 1,
+        borderColor: '#fff',
+        borderRadius: 5,
+        backgroundColor: '#fff',
     },
-    postTitle: {
-        fontWeight: 'bold',
-        fontSize: 16
+    button: {
+        backgroundColor: '#3a506b',
+        padding: 10,
+        borderRadius: 5,
+        width: '85%',
+        alignItems: 'center',
+        marginTop: 10,
     },
-    postDate: {
-        fontSize: 12,
-        marginBottom: 5
-    },
-    editButton: {
-        padding: 5,
-        alignSelf: 'flex-end'
+    buttonText: {
+        color: '#fff',
+        fontSize: 18,
     }
 });
 
-export default Profile;
+export default EditProfile;

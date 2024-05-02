@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image } from 'react-native';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { CommonActions } from '@react-navigation/native'; // Import for navigation reset
 
 const Auth = ({ navigation }) => {
     const [isSignUp, setIsSignUp] = useState(false);
@@ -8,6 +9,18 @@ const Auth = ({ navigation }) => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const auth = getAuth();
+
+    const resetNavigation = (targetRoute) => {
+        // Resets the entire navigation stack and navigates to the given route
+        navigation.dispatch(
+            CommonActions.reset({
+                index: 0,
+                routes: [
+                    { name: targetRoute },
+                ],
+            })
+        );
+    };
 
     const handleAuth = () => {
         if (isSignUp) {
@@ -18,7 +31,7 @@ const Auth = ({ navigation }) => {
             createUserWithEmailAndPassword(auth, email, password)
                 .then((userCredential) => {
                     console.log('Signed up with:', userCredential.user);
-                    navigation.navigate('Account');
+                    resetNavigation('Account');  // Navigate to Account on successful signup
                 })
                 .catch((error) => {
                     console.error('Signup error:', error.message);
@@ -27,7 +40,7 @@ const Auth = ({ navigation }) => {
             signInWithEmailAndPassword(auth, email, password)
                 .then((userCredential) => {
                     console.log('Logged in with:', userCredential.user);
-                    navigation.navigate('Main');
+                    resetNavigation('Main');  // Navigate to Main on successful login
                 })
                 .catch((error) => {
                     console.error('Login error:', error.message);

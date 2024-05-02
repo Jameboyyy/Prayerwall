@@ -11,14 +11,16 @@ import Post from '../screens/post';
 import Notification from '../screens/notification';
 import Profile from '../screens/profile';
 import EditProfile from '../screens/editProfile';
-import SearchedProfile from '../screens/SearchedProfile';
+import SearchedProfile from '../screens/searchedProfile';
 import GroupChat from '../screens/groupChat';
 import EditPost from '../screens/editPost';
+import Comment from '../screens/comment';  // Import Comment component
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const ProfileStack = createStackNavigator();
 const UserFeedStack = createStackNavigator();
+const SearchStack = createStackNavigator();
 
 const AppNavigator = () => {
   return (
@@ -35,11 +37,11 @@ const AppNavigator = () => {
 const MainTabNavigator = () => {
   return (
     <Tab.Navigator>
-      <Tab.Screen name="UserFeedTab" component={UserFeedStackScreen} />
-      <Tab.Screen name="Search" component={Search} />
-      <Tab.Screen name="Post" component={Post} />
-      <Tab.Screen name="Notification" component={Notification} />
-      <Tab.Screen name="ProfileTab" component={ProfileStackNavigator} />
+      <Tab.Screen name="UserFeedTab" component={UserFeedStackScreen} options={{ headerShown: false }}/>
+      <Tab.Screen name="SearchTab" component={SearchStackScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="PostTab" component={Post} options={{ headerShown: false }} />
+      <Tab.Screen name="NotificationTab" component={Notification} options={{ headerShown: false }}/>
+      <Tab.Screen name="ProfileTab" component={ProfileStackNavigator} options={{ headerShown: false }} />
     </Tab.Navigator>
   );
 };
@@ -49,6 +51,7 @@ const UserFeedStackScreen = () => {
     <UserFeedStack.Navigator>
       <UserFeedStack.Screen name="UserFeed" component={UserFeed} />
       <UserFeedStack.Screen name="EditPost" component={EditPost} />
+      <UserFeedStack.Screen name="Comment" component={Comment} /> 
     </UserFeedStack.Navigator>
   );
 };
@@ -59,6 +62,15 @@ const ProfileStackNavigator = () => {
       <ProfileStack.Screen name="Profile" component={Profile} />
       <ProfileStack.Screen name="EditProfile" component={EditProfile} />
     </ProfileStack.Navigator>
+  );
+};
+
+const SearchStackScreen = () => {
+  return (
+    <SearchStack.Navigator>
+      <SearchStack.Screen name="SearchMain" component={Search} />
+      <SearchStack.Screen name="SearchedProfile" component={SearchedProfile} />
+    </SearchStack.Navigator>
   );
 };
 

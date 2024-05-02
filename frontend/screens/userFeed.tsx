@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, RefreshControl, TouchableOpacity, Switch } from 'react-native';
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { StyleSheet, View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import { useNavigation, NavigationProp } from '@react-navigation/native'; // Import StackNavigationProp
+import { NavigationProp } from '@react-navigation/native'; // Import StackNavigationProp
 
 interface Post {
     id: string;
@@ -11,17 +11,17 @@ interface Post {
     content: string;
     createdAt: string;
     username: string;
-    userId: string; // Include userId in the Post interface
+    userId: string;
+    likes: number; // Assuming each post document has a 'likes' field
 }
 
 interface Props {
-    navigation: NavigationProp<any>; // Define the type of navigation prop
+    navigation: NavigationProp<any>;
 }
 
 const UserFeed: React.FC<Props> = ({ navigation }) => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [refreshing, setRefreshing] = useState(false);
-    const [isPublic, setIsPublic] = useState(true);
     const firestore = getFirestore();
     const auth = getAuth();
 
@@ -40,31 +40,30 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                     content: postData.content,
                     createdAt: postData.createdAt.toDate().toString(),
                     username: username,
-                    userId: postData.userId
+                    userId: postData.userId,
+                    likes: postData.likes || 0  // Default to 0 if no likes are present
                 };
             });
             Promise.all(postsFetchPromises).then(setPosts);
         });
 
         return () => unsubscribe();
-    }, [isPublic]);
+    }, []);
 
     const onRefresh = () => {
         setRefreshing(true);
         setTimeout(() => setRefreshing(false), 1500);
     };
 
+    const handleLike = async (postId: string, currentLikes: number) => {
+        const postRef = doc(firestore, "posts", postId);
+        await updateDoc(postRef, {
+            likes: currentLikes + 1
+        });
+    };
+
     return (
         <View style={styles.container}>
-            <View style={styles.toggleContainer}>
-                <Text style={styles.toggleLabel}>{isPublic ? 'Public' : 'Friends Only'}</Text>
-                <Switch
-                    trackColor={{ false: "#767577", true: "#81b0ff" }}
-                    thumbColor={isPublic ? "#f5dd4b" : "#f4f3f4"}
-                    onValueChange={() => setIsPublic(previousState => !previousState)}
-                    value={isPublic}
-                />
-            </View>
             <ScrollView
                 contentContainerStyle={styles.scrollContainer}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -75,10 +74,19 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                         <Text style={styles.postTitle}>{post.title}</Text>
                         <Text>{post.content}</Text>
                         <Text style={styles.postDate}>{post.createdAt}</Text>
+                        <View style={styles.actionsContainer}>
+                            <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(post.id, post.likes)}>
+                                <FontAwesome5 name="pray" size={20} color="black" />
+                                <Text>{` ${post.likes}`}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Comments', { postId: post.id })}>
+                                <FontAwesome5 name="comment" size={20} color="black" />
+                                <Text> Comment</Text>
+                            </TouchableOpacity>
+                        </View>
                         {auth.currentUser?.uid === post.userId && (
-                            <TouchableOpacity style={styles.editButton}
-                                onPress={() => navigation.navigate('EditPost', { postId: post.id })}>
-                                <FontAwesome5 name="ellipsis-v" size={20} color="black" />
+                            <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditPost', { postId: post.id })}>
+                                <FontAwesome5 name="edit" size={20} color="black" />
                             </TouchableOpacity>
                         )}
                     </View>
@@ -100,7 +108,7 @@ const styles = StyleSheet.create({
         padding: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#ccc',
-        width: '100%'
+        width: '100%',
     },
     username: {
         fontWeight: 'bold',
@@ -112,25 +120,25 @@ const styles = StyleSheet.create({
     },
     postDate: {
         fontSize: 12,
-        color: '#666'
+        color: '#666',
+        marginBottom: 5,
     },
-    toggleContainer: {
+    actionsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingTop: 10,
+        marginTop: 10,
+        marginBottom: 10
     },
-    toggleLabel: {
-        fontSize: 18,
-        color: '#3a506b',
-        fontFamily: 'JosefinSans-Regular'
+    actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 10
     },
     editButton: {
         padding: 5,
-        alignSelf: 'flex-end',
-        marginTop: -40,  // Adjust as necessary
-        color: '#black',
+        position: 'absolute',
+        right: 10,
+        top: '85%',
     }
 });
 

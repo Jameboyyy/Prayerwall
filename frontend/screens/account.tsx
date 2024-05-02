@@ -4,6 +4,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage'; // Import required functions for storage
 import { firestore } from '../firebaseConfig';
+import { CommonActions } from '@react-navigation/native';
 
 const Account = ({ navigation }) => {
     const [firstName, setFirstName] = useState('');
@@ -36,18 +37,27 @@ const Account = ({ navigation }) => {
     
         try {
             const uid = auth.currentUser.uid;
-            const profilePictureUrl = await fetchDefaultProfilePic(); // Fetch the URL of the default profile picture
+            const profilePictureUrl = await fetchDefaultProfilePic();
             await registerUsername(username, uid);
-
+    
             await setDoc(doc(firestore, "users", uid), {
                 firstName: firstName,
                 lastName: lastName,
                 username: username,
-                profilePicture: profilePictureUrl // Use the fetched URL here
+                profilePicture: profilePictureUrl
             }, { merge: true });
     
             Alert.alert("Success", "Profile details submitted successfully");
-            navigation.navigate('Main');
+    
+            // Reset navigation stack and set Main as the new root
+            navigation.dispatch(
+                CommonActions.reset({
+                    index: 0,
+                    routes: [
+                        { name: 'Main' },  // Make sure 'Main' is the correct name of your main navigation route
+                    ],
+                })
+            );
         } catch (error) {
             console.error("Error writing document: ", error);
             Alert.alert("Error", error.message);
