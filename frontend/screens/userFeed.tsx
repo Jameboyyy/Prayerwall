@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import { NavigationProp } from '@react-navigation/native'; // Import StackNavigationProp
+import { NavigationProp } from '@react-navigation/native';
 
 interface Post {
     id: string;
@@ -12,7 +12,8 @@ interface Post {
     createdAt: string;
     username: string;
     userId: string;
-    likes: number; // Assuming each post document has a 'likes' field
+    likes: number;
+    currentUserLiked: boolean;
 }
 
 interface Props {
@@ -24,49 +25,63 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
     const [refreshing, setRefreshing] = useState(false);
     const firestore = getFirestore();
     const auth = getAuth();
+    const currentUser = auth.currentUser;
 
     useEffect(() => {
         const postsQuery = query(collection(firestore, "posts"), orderBy("createdAt", "desc"));
-        const unsubscribe = onSnapshot(postsQuery, (querySnapshot) => {
-            const postsFetchPromises = querySnapshot.docs.map(async (docSnapshot) => {
+        const unsubscribe = onSnapshot(postsQuery, async (querySnapshot) => {
+            const postsData = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
                 const postData = docSnapshot.data();
-                const userRef = doc(firestore, "users", postData.userId);
-                const userSnap = await getDoc(userRef);
-                const username = userSnap.exists() ? userSnap.data().username : "Unknown User";
-
+                const userRef = doc(firestore, "users", postData.userId); // Reference to the user document
+                const userSnapshot = await getDoc(userRef); // Fetch the user document
+                const user = userSnapshot.data(); // Extract user data
+                const username = user ? user.username : "Unknown"; // Get username or set a default
+    
+                const likesRef = doc(collection(firestore, "posts", docSnapshot.id, "likes"), currentUser?.uid);
+                const likesSnapshot = await getDoc(likesRef);
+                const currentUserLiked = likesSnapshot.exists();
+    
                 return {
                     id: docSnapshot.id,
                     title: postData.title,
                     content: postData.content,
                     createdAt: postData.createdAt.toDate().toString(),
-                    username: username,
+                    username: username, // Set the username
                     userId: postData.userId,
-                    likes: postData.likes || 0  // Default to 0 if no likes are present
+                    likes: postData.likes || 0,
+                    currentUserLiked
                 };
-            });
-            Promise.all(postsFetchPromises).then(setPosts);
+            }));
+            setPosts(postsData);
         });
-
+    
         return () => unsubscribe();
-    }, []);
+    }, [currentUser]);
+    
+    
 
-    const onRefresh = () => {
-        setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 1500);
-    };
+    const handleLike = async (post: Post) => {
+        const postRef = doc(firestore, "posts", post.id);
+        const likesRef = doc(collection(firestore, "posts", post.id, "likes"), currentUser?.uid);
 
-    const handleLike = async (postId: string, currentLikes: number) => {
-        const postRef = doc(firestore, "posts", postId);
-        await updateDoc(postRef, {
-            likes: currentLikes + 1
-        });
+        if (post.currentUserLiked) {
+            await deleteDoc(likesRef);
+            await updateDoc(postRef, {
+                likes: post.likes - 1
+            });
+        } else {
+            await setDoc(likesRef, { userId: currentUser?.uid });
+            await updateDoc(postRef, {
+                likes: post.likes + 1
+            });
+        }
     };
 
     return (
         <View style={styles.container}>
             <ScrollView
                 contentContainerStyle={styles.scrollContainer}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(false)} />}
             >
                 {posts.map((post) => (
                     <View key={post.id} style={styles.post}>
@@ -75,16 +90,15 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                         <Text>{post.content}</Text>
                         <Text style={styles.postDate}>{post.createdAt}</Text>
                         <View style={styles.actionsContainer}>
-                            <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(post.id, post.likes)}>
-                                <FontAwesome5 name="pray" size={20} color="black" />
+                            <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(post)}>
+                                <FontAwesome5 name="pray" size={20} color={post.currentUserLiked ? "#3a506b" : "black"} />
                                 <Text>{` ${post.likes}`}</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Comments', { postId: post.id })}>
+                            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Comment', { postId: post.id })}>
                                 <FontAwesome5 name="comment" size={20} color="black" />
-                                <Text> Comment</Text>
                             </TouchableOpacity>
                         </View>
-                        {auth.currentUser?.uid === post.userId && (
+                        {currentUser?.uid === post.userId && (
                             <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditPost', { postId: post.id })}>
                                 <FontAwesome5 name="edit" size={20} color="black" />
                             </TouchableOpacity>
@@ -125,15 +139,15 @@ const styles = StyleSheet.create({
     },
     actionsContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start', // Align items to the start of the container
         marginTop: 10,
         marginBottom: 10
     },
     actionButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginRight: 10
-    },
+        marginRight: 20 // Increase or decrease as needed to manage space between buttons
+    },    
     editButton: {
         padding: 5,
         position: 'absolute',

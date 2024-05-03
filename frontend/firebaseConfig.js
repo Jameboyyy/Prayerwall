@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
     apiKey: "AIzaSyC8xjCGzDpiMnUTP0yiFfZWiqiIqgdj5rc",
-    authDomain: "prayerwall-2f4c4-default-rtdb.firebaseio.com",
+    authDomain: " prayerwall-2f4c4.firebaseapp.com ",
     projectId: "prayerwall-2f4c4",
     storageBucket: "prayerwall-2f4c4.appspot.com",
     messagingSenderId: "1001736195882",
