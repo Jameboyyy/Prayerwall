@@ -1,41 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet, TouchableOpacity } from 'react-native';
-import { getFirestore, doc, getDoc, updateDoc, DocumentData } from 'firebase/firestore';
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
+
+// Assuming your interfaces are defined elsewhere and imported here
+interface Subpost {
+    content: string;
+    createdAt: string;
+}
+
+interface Post {
+    title: string;
+    content: string;
+    subpost?: Subpost;
+}
 
 const EditPost = ({ route, navigation }) => {
     const { postId } = route.params;
-    const [post, setPost] = useState<DocumentData | null>(null);
+    const [post, setPost] = useState<Post | null>(null);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [subpostContent, setSubpostContent] = useState('');
 
     useEffect(() => {
-        const fetchPost = async () => {
-            const firestore = getFirestore();
-            const postRef = doc(firestore, 'posts', postId);
-            const docSnap = await getDoc(postRef);
-
+        const firestore = getFirestore();
+        const postRef = doc(firestore, 'posts', postId);
+        getDoc(postRef).then(docSnap => {
             if (docSnap.exists()) {
-                const postData = docSnap.data();
+                const postData = docSnap.data() as Post;
                 setPost(postData);
                 setTitle(postData.title);
                 setContent(postData.content);
+                if (postData.subpost) {
+                    setSubpostContent(postData.subpost.content);
+                }
             } else {
-                console.log('No such document!');
+                Alert.alert('Error', 'No such document!');
                 navigation.goBack();
             }
-        };
-
-        fetchPost();
+        });
     }, [postId, navigation]);
 
     const handleSave = async () => {
+        const firestore = getFirestore();
+        const postRef = doc(firestore, 'posts', postId);
+        const updateData: any = {
+            title: title,
+            content: content,
+        };
+
+        if (post?.subpost && subpostContent.trim() !== '') {
+            updateData.subpost = { content: subpostContent, createdAt: new Date().toISOString() };
+        }
+
         try {
-            const firestore = getFirestore();
-            const postRef = doc(firestore, 'posts', postId);
-            await updateDoc(postRef, {
-                title: title,
-                content: content,
-            });
+            await updateDoc(postRef, updateData);
             Alert.alert('Success', 'Post updated successfully');
             navigation.goBack();
         } catch (error) {
@@ -44,31 +62,41 @@ const EditPost = ({ route, navigation }) => {
         }
     };
 
-    if (!post) {
-        return <Text>Loading...</Text>;
-    }
-
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Edit Post</Text>
+            <Text style={styles.label}>Title</Text>
             <TextInput 
                 style={styles.input} 
                 value={title} 
                 onChangeText={setTitle} 
                 placeholder="Enter post title" 
             />
+            <Text style={styles.label}>Content</Text>
             <TextInput 
                 style={styles.inputContent} 
                 value={content} 
                 onChangeText={setContent} 
                 placeholder="Enter post content" 
                 multiline={true} 
-                numberOfLines={4} 
+                numberOfLines={4}
             />
+            {post?.subpost && (
+                <>
+                    <Text style={styles.label}>Subpost Content</Text>
+                    <TextInput
+                        style={styles.inputContent}
+                        value={subpostContent}
+                        onChangeText={setSubpostContent}
+                        placeholder="Edit subpost content"
+                        multiline={true}
+                        numberOfLines={4}
+                    />
+                </>
+            )}
             <TouchableOpacity style={styles.button} onPress={handleSave}>
-                <Text style={styles.buttonText}>Finish Editing</Text>
+                <Text style={styles.buttonText}>Save Changes</Text>
             </TouchableOpacity>
-
         </View>
     );
 };
@@ -84,32 +112,37 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         color: '#3a506b',
-        fontFamily: 'JosefinSans-Regular',
         marginBottom: 20,
+    },
+    label: {
+        alignSelf: 'flex-start',
+        marginLeft: 20,
+        color: '#3a506b',
+        fontSize: 16,
+        marginBottom: 5,
     },
     input: {
         width: '90%',
         padding: 10,
         marginVertical: 8,
         borderWidth: 1,
-        borderColor: '#fff',
+        borderColor: '#ccc',
         borderRadius: 5,
         backgroundColor: '#fff',
-        fontFamily: 'JosefinSans-Regular',
     },
     inputContent: {
         width: '90%',
-        height: 150, // Adjusted for better text entry
-        marginVertical: 8,
+        height: 150,
         padding: 10,
+        marginVertical: 8,
         borderWidth: 1,
-        borderColor: '#fff',
+        borderColor: '#ccc',
         borderRadius: 5,
         backgroundColor: '#fff',
-        fontFamily: 'JosefinSans-Regular',
+        textAlignVertical: 'top',
     },
     button: {
-        backgroundColor: '#3a506b',
+        backgroundColor: '#007bff',
         padding: 10,
         borderRadius: 5,
         width: '90%',
@@ -118,8 +151,7 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         color: '#fff',
-        fontFamily: 'JosefinSans-Regular', 
-        fontSize: 16
+        fontSize: 16,
     }
 });
 
