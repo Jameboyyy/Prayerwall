@@ -17,7 +17,7 @@ interface PostData {
     createdAt?: { seconds: number, nanoseconds: number };
 }
 
-const Comment = ({ route }) => {
+const Comment = ({ route, navigation }) => {
     const { postId } = route.params;
     const [post, setPost] = useState<PostData | null>(null);
     const [comments, setComments] = useState<CommentType[]>([]);
@@ -101,32 +101,42 @@ const Comment = ({ route }) => {
         });
     };
 
-    const handleAddComment = async () => {
+    const handleAddComment = async (sourceScreen: string) => {
         if (newComment.trim() === "") return;
-
+    
         try {
             const userId = currentUser?.uid;
-
+    
             if (!userId) {
                 console.error("No user is currently logged in.");
                 return;
             }
-
+    
             const username = await getUsername(userId);
-
+    
             const commentsCollection = collection(firestore, "posts", postId, "comments");
-
+    
             await addDoc(commentsCollection, {
                 text: newComment,
                 userId: userId,
                 createdAt: new Date(),
             });
-
+    
             setNewComment('');
+    
+            // Navigate back to the specified screen
+            if (sourceScreen === 'UserFeed') {
+                navigation.navigate('UserFeed');
+            } else if (sourceScreen === 'SearchedProfile') {
+                navigation.navigate('SearchedProfile', { userId: post.userId });
+            } else if (sourceScreen === 'Profile') {
+                navigation.navigate('Profile');
+            }
         } catch (error) {
             console.error("Error adding comment: ", error);
         }
     };
+    
 
     if (!post) {
         return <Text>Loading post details...</Text>;
@@ -217,7 +227,7 @@ const styles = StyleSheet.create({
         color: '#666',
     },
     comment: {
-        backgroundColor: '#f9f9f9',
+        backgroundColor: '#d2e7d6',
         padding: 10,
         marginBottom: 10,
         borderRadius: 5,

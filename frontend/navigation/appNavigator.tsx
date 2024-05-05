@@ -51,10 +51,24 @@ const UserFeedStackScreen = () => {
     <UserFeedStack.Navigator>
       <UserFeedStack.Screen name="UserFeed" component={UserFeed} />
       <UserFeedStack.Screen name="EditPost" component={EditPost} />
-      <UserFeedStack.Screen name="Comment" component={Comment} /> 
+      <UserFeedStack.Screen 
+        name="Comment" 
+        component={Comment} 
+        options={({ route }) => ({ 
+          title: 'Comment',
+          headerBackTitleVisible: false,
+          headerBackTitle: 'Back',
+          headerShown: true,
+          headerTintColor: '#333',
+          headerTitleStyle: { fontWeight: 'bold' },
+          // Pass the sourceScreen information as a navigation param
+          initialParams: { sourceScreen: route.name }
+        })}
+      /> 
     </UserFeedStack.Navigator>
   );
 };
+
 
 const ProfileStackNavigator = () => {
   return (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, RefreshControl, TouchableOpacity, Modal, Pressable, TextInput } from 'react-native';
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, runTransaction } from 'firebase/firestore';
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, runTransaction, where, getDocs } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { NavigationProp } from '@react-navigation/native';
@@ -20,6 +20,7 @@ interface Post {
     likes: number;
     currentUserLiked: boolean;
     subpost?: Subpost;
+    isSubscribed: boolean;
 }
 
 interface Props {
@@ -46,6 +47,11 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                 const user = userSnapshot.data();
                 const username = user ? user.username : "Unknown";
 
+                const subRef = collection(firestore, "subscriptions");
+                const subQuery = query(subRef, where("subscriberId", "==", currentUser?.uid), where("subscribedToId", "==", postData.userId));
+                const subSnapshot = await getDocs(subQuery);
+                const isSubscribed = !subSnapshot.empty;
+
                 return {
                     id: docSnapshot.id,
                     title: postData.title,
@@ -58,14 +64,17 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                     subpost: postData.subpost ? {
                         content: postData.subpost.content,
                         createdAt: postData.subpost.createdAt
-                    } : undefined
+                    } : undefined,
+                    isSubscribed: isSubscribed
                 };
             }));
             setPosts(postsData);
         });
 
         return () => unsubscribe();
-    }, [currentUser]);const handleLike = async (post: Post) => {
+    }, [currentUser]);
+
+    const handleLike = async (post: Post) => {
         const postRef = doc(firestore, "posts", post.id);
         const likesRef = collection(firestore, "posts", post.id, "likes");
         const userLikeRef = doc(likesRef, currentUser?.uid);
@@ -76,9 +85,9 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                 const postSnap = await transaction.get(postRef);
                 const postData = postSnap.data();
     
-                // Ensure postLikes is initialized as an empty array
-                let postLikes: string[] = postData?.likes || [];
-    
+                // Ensure postLikes is initialized as an empty array if postData?.likes is not an array
+                let postLikes: string[] = Array.isArray(postData?.likes) ? postData?.likes : [];
+                
                 if (userLikeSnap.exists()) {
                     // User already liked, so unlike
                     transaction.delete(userLikeRef);
@@ -99,7 +108,6 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
             console.error("Transaction failed: ", error);
         }
     };
-    
     
     const handleSubpostSubmit = async (postId: string) => {
         const content = subpostContents[postId];
@@ -142,7 +150,8 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                         <Text style={styles.username}>{post.username}</Text>
                         <Text style={styles.postTitle}>{post.title}</Text>
                         <Text>{post.content}</Text>
-                        <Text style={styles.postDate}>{post.createdAt}</Text><View style={styles.actionsContainer}>
+                        <Text style={styles.postDate}>{post.createdAt}</Text>
+                        <View style={styles.actionsContainer}>
                             <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(post)}>
                                 <FontAwesome5 name="pray" size={20} color={post.currentUserLiked ? "#3a506b" : "black"} />
                                 {Array.isArray(post.likes) ? (
@@ -151,13 +160,20 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                                     <Text> {post.likes}</Text>
                                 )}
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Comment', { postId: post.id })}>
+                            <TouchableOpacity 
+                                style={styles.actionButton} 
+                                onPress={() => navigation.navigate('Comment', { postId: post.id, sourceScreen: 'UserFeed' })}
+                            >
                                 <FontAwesome5 name="comment" size={20} color="black" />
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.ellipsisContainer} onPress={() => handleEllipsisPress(post.id)}>
-                                <FontAwesome5 name="ellipsis-v" size={20} color="black" />
-                            </TouchableOpacity>
+                            {currentUser?.uid !== post.userId && !post.subpost && ( // Display subscription button only if it's not the user's own post and there's no subpost
+                                <TouchableOpacity style={styles.actionButton} onPress={() => handleSubscribe(post)}>
+                                    <FontAwesome5 name="plus" size={20} color="black" />
+                                </TouchableOpacity>
+                            )}
                         </View>
+
+
                         {post.subpost && (
                             <View style={styles.subpostContainer}>
                                 <Text>{`${post.username}: ${post.subpost.content}`}</Text>
@@ -180,6 +196,9 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                                 </TouchableOpacity>
                             </View>
                         )}
+                        <TouchableOpacity style={styles.ellipsisContainer} onPress={() => handleEllipsisPress(post.id)}>
+                            <FontAwesome5 name="ellipsis-v" size={20} color="black" />
+                        </TouchableOpacity>
                     </View>
                 ))}
             </ScrollView>
