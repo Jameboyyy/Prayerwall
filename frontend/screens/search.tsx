@@ -51,7 +51,7 @@ const Search = ({ navigation }) => {
                 data={users}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    <TouchableOpacity onPress={() => navigation.navigate('SearchedProfile', { userId: item.id })} style={styles.userItemContainer}>
+                    <TouchableOpacity onPress={() => navigation.navigate('SearchUserProfile', { userId: item.id })} style={styles.userItemContainer}>
                         <Text style={styles.userItem}>{item.username}</Text>
                     </TouchableOpacity>
                 )}

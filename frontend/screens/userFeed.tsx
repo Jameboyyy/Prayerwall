@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, RefreshControl, TouchableOpacity, Modal, Pressable, TextInput } from 'react-native';
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, runTransaction, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, getDoc, runTransaction, where, getDocs, deleteDoc, addDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import { NavigationProp } from '@react-navigation/native';
+import createNotification from '../notification/notificationUtil';
 
 interface Subpost {
     content: string;
@@ -108,35 +109,103 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
             console.error("Transaction failed: ", error);
         }
     };
+
+    const handleSubscribe = async (post: Post) => {
+        try {
+            const subRef = collection(firestore, "subscriptions");
+            // Refactor the query to be more efficient
+            const subsQuery = query(subRef, where("subscriberId", "==", currentUser?.uid), where("subscribedToId", "==", post.id));
+            const querySnapshot = await getDocs(subsQuery);
+            const existingSubscription = querySnapshot.docs.length > 0;
     
-    const handleSubpostSubmit = async (postId: string) => {
+            console.log(`Subscription status for post ${post.id}: ${existingSubscription ? 'Subscribed' : 'Not Subscribed'}`);
+    
+            if (existingSubscription) {
+                // Unsubscribe logic
+                const subscriptionDoc = querySnapshot.docs[0];
+                console.log(`Unsubscribing from post: ${post.id}`);
+                await deleteDoc(subscriptionDoc.ref);
+            } else {
+                // Subscribe logic
+                console.log(`Subscribing to post: ${post.id}`);
+                await addDoc(subRef, {
+                    subscriberId: currentUser?.uid,
+                    subscribedToId: post.id,
+                    createdAt: new Date().toISOString()
+                });
+            }
+    
+            // Update local state to reflect subscription status
+            setPosts(prevPosts =>
+                prevPosts.map(prevPost =>
+                    prevPost.id === post.id ? { ...prevPost, isSubscribed: !existingSubscription } : prevPost
+                )
+            );
+        } catch (error) {
+            console.error("Error handling subscription:", error);
+        }
+    };
+    
+    
+    
+    const handleSubpostSubmit = async (postId) => {
         const content = subpostContents[postId];
         if (!content.trim()) {
             console.error('Subpost content is empty');
             return;
         }
-
-        const postRef = doc(firestore, "posts", postId);
-        try {
-            await updateDoc(postRef, {
-                subpost: {
-                    content: content,
-                    createdAt: new Date().toISOString()
-                }
-            });
-            setSubpostContents({ ...subpostContents, [postId]: '' });
-        } catch (error) {
-            console.error('Error adding subpost:', error);
-        }
+    
+        console.log("Submitting subpost for post ID:", postId);
+        const postRef = doc(getFirestore(), "posts", postId);
+        await updateDoc(postRef, {
+            subpost: {
+                content: content,
+                createdAt: new Date().toISOString()
+            }
+        });
+    
+        console.log("Subpost added, fetching subscriptions...");
+        const subscriptionsRef = collection(getFirestore(), "subscriptions");
+        const subscriptionsQuery = query(subscriptionsRef, where("subscribedToId", "==", postId));
+        const subscriptionSnapshots = await getDocs(subscriptionsQuery);
+    
+        subscriptionSnapshots.forEach(async (docSnapshot) => {
+            const subscription = docSnapshot.data();
+            console.log("Notifying subscriber:", subscription.subscriberId);
+            await createNotification(subscription.subscriberId, "subpost_added", "A new subpost was added.", postId);
+        });
     };
-
+    
+    
     const handleSubpostChange = (text: string, postId: string) => {
         setSubpostContents({ ...subpostContents, [postId]: text });
     };
-
     const handleEllipsisPress = (postId: string) => {
         setSelectedPostId(postId);
         setModalVisible(true);
+    };
+
+    // Define a function to handle reporting a post
+    const handleReport = async (post: Post) => {
+        try {
+            // Create a reference to the 'reported_posts' collection
+            const reportedPostsRef = collection(firestore, 'reported_posts');
+
+            // Add the reported post to the 'reported_posts' collection
+            await addDoc(reportedPostsRef, {
+                postId: post.id,
+                title: post.title,
+                content: post.content,
+                username: post.username,
+                userId: post.userId,
+                reportedAt: new Date().toISOString(),
+            });
+
+            console.log('Post reported successfully:', post.id);
+            setModalVisible(false); // Close the modal after reporting
+        } catch (error) {
+            console.error('Error reporting post:', error);
+        }
     };
 
     return (
@@ -162,14 +231,18 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                             </TouchableOpacity>
                             <TouchableOpacity 
                                 style={styles.actionButton} 
-                                onPress={() => navigation.navigate('Comment', { postId: post.id, sourceScreen: 'UserFeed' })}
+                                onPress={() => navigation.navigate('UserComments', { postId: post.id, sourceScreen: 'UserFeed' })}
                             >
                                 <FontAwesome5 name="comment" size={20} color="black" />
                             </TouchableOpacity>
                             {currentUser?.uid !== post.userId && !post.subpost && ( // Display subscription button only if it's not the user's own post and there's no subpost
-                                <TouchableOpacity style={styles.actionButton} onPress={() => handleSubscribe(post)}>
-                                    <FontAwesome5 name="plus" size={20} color="black" />
-                                </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={styles.actionButton} 
+                                onPress={() => handleSubscribe(post)}
+                            >
+                                <FontAwesome5 name="plus" size={20} color={post.isSubscribed ? "#3a506b" : "black"} />
+                            </TouchableOpacity>
+
                             )}
                         </View>
 
@@ -221,7 +294,7 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                                 <Pressable
                                     style={[styles.optionButton, styles.editButton]}
                                     onPress={() => {
-                                        navigation.navigate('EditPost', { postId: selectedPostId });
+                                        navigation.navigate('EditUserPost', { postId: selectedPostId });
                                         setModalVisible(false);
                                     }}
                                 >
@@ -233,7 +306,7 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                                     style={[styles.optionButton, styles.reportButton]}
                                     onPress={() => {
                                         console.log("Report post");
-                                        setModalVisible(false);
+                                        handleReport(posts.find(post => post.id === selectedPostId)!); // Call handleReport function
                                     }}
                                 >
                                     <FontAwesome5 name="exclamation" size={20} color="white" />
@@ -252,6 +325,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#d2e7d6',
+        paddingTop: '15%'
     },
     scrollContainer: {
         alignItems: 'center'

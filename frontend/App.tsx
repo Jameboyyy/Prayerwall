@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import AppNavigator from './navigation/appNavigator';
 import { useFonts } from 'expo-font';
 import './firebaseConfig';
+import { AuthProvider } from './context/authcontext'
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -16,9 +17,11 @@ export default function App() {
   }
   console.log('App is rendering');  // Check if this logs in your console
   return (
-    <View style={styles.container}>
-      <AppNavigator />
-    </View>
+    <AuthProvider>
+      <View style={styles.container}>
+        <AppNavigator />
+      </View>
+    </AuthProvider>
   );
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, RefreshControl, TextInput, Modal } from 'react-native';
-import { doc, getDoc, collection, query, where, getDocs, orderBy, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { firestore } from '../firebaseConfig';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
@@ -149,7 +149,7 @@ const Profile = ({ navigation }) => {
     };
 
     const handleEdit = () => {
-        navigation.navigate('EditPost', { postId: selectedPostId });
+        navigation.navigate('EditUserPost', { postId: selectedPostId });
         setModalVisible(false);
     };
 
@@ -188,7 +188,7 @@ const Profile = ({ navigation }) => {
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.commentButton}
-                            onPress={() => navigation.navigate('Comment', { postId: post.id })}
+                            onPress={() => navigation.navigate('UserComments', { postId: post.id })}
                         >
                             <FontAwesome5 name="comment" size={20} color="black" />
                         </TouchableOpacity>

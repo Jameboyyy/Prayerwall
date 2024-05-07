@@ -189,7 +189,7 @@ const SearchedProfile = ({ route, navigation }: Props) => {
                         </TouchableOpacity>
                         <TouchableOpacity 
                             style={styles.actionButton} 
-                            onPress={() => navigation.navigate('Comment', { postId: item.id, sourceScreen: 'SearchedProfile' })}
+                            onPress={() => navigation.navigate('UserComments', { postId: item.id, sourceScreen: 'SearchedProfile' })}
                             >
                             <FontAwesome5 name="comment" size={20} color="black" />
                             <Text> Comment</Text>

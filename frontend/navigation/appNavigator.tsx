@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { FontAwesome5 } from '@expo/vector-icons';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
 import Auth from '../screens/auth';
 import Account from '../screens/account';
@@ -16,6 +18,8 @@ import GroupChat from '../screens/groupChat';
 import EditPost from '../screens/editPost';
 import Comment from '../screens/comment';  // Import Comment component
 
+const AuthContext = React.createContext(null);
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const ProfileStack = createStackNavigator();
@@ -23,25 +27,66 @@ const UserFeedStack = createStackNavigator();
 const SearchStack = createStackNavigator();
 
 const AppNavigator = () => {
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+    return unsubscribe; // Cleanup on unmount
+  }, []);
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Auth">
-        <Stack.Screen name="Auth" component={Auth} options={{ headerShown: false }} />
-        <Stack.Screen name="Account" component={Account} options={{ headerShown: false }} />
-        <Stack.Screen name="Main" component={MainTabNavigator} options={{ headerShown: false }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <AuthContext.Provider value={currentUser}>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Auth">
+          <Stack.Screen name="Auth" component={Auth} options={{ headerShown: false }} />
+          <Stack.Screen name="Account" component={Account} options={{ headerShown: false }} />
+          <Stack.Screen name="Main" component={MainTabNavigator} options={{ headerShown: false }} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </AuthContext.Provider>
   );
 };
 
 const MainTabNavigator = () => {
+  const currentUser = useContext(AuthContext);
+
   return (
-    <Tab.Navigator>
-      <Tab.Screen name="UserFeedTab" component={UserFeedStackScreen} options={{ headerShown: false }}/>
-      <Tab.Screen name="SearchTab" component={SearchStackScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="PostTab" component={Post} options={{ headerShown: false }} />
-      <Tab.Screen name="NotificationTab" component={Notification} options={{ headerShown: false }}/>
-      <Tab.Screen name="ProfileTab" component={ProfileStackNavigator} options={{ headerShown: false }} />
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false, // Hide the header for all tabs
+        tabBarIcon: ({ color, size }) => {
+          let iconName;
+
+          if (route.name === 'UserFeed') {
+            iconName = 'home';
+          } else if (route.name === 'SearchTab') {
+            iconName = 'search';
+          } else if (route.name === 'PostTab') {
+            iconName = 'plus-square';
+          } else if (route.name === 'NotificationTab') {
+            iconName = 'bell';
+          } else if (route.name === 'ProfileTab') {
+            iconName = 'user';
+          }
+
+          return <FontAwesome5 name={iconName} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: '#3a506b',
+        tabBarInactiveTintColor: 'black',
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          backgroundColor: '#d2e7d6',
+        },
+      })}
+    >
+      <Tab.Screen name="UserFeed" component={UserFeedStackScreen} />
+      <Tab.Screen name="SearchTab" component={SearchStackScreen} />
+      <Tab.Screen name="PostTab" component={Post} />
+      <Tab.Screen name="NotificationTab" children={() => <Notification currentUser={currentUser} />} />
+      <Tab.Screen name="ProfileTab" component={ProfileStackNavigator} />
     </Tab.Navigator>
   );
 };
@@ -49,31 +94,27 @@ const MainTabNavigator = () => {
 const UserFeedStackScreen = () => {
   return (
     <UserFeedStack.Navigator>
-      <UserFeedStack.Screen name="UserFeed" component={UserFeed} />
-      <UserFeedStack.Screen name="EditPost" component={EditPost} />
+      <UserFeedStack.Screen name="UserFeedMain" component={UserFeed} options={{ headerShown: false }}/>
+      <UserFeedStack.Screen name="EditUserPost" component={EditPost} options={{ headerShown: false }} />
       <UserFeedStack.Screen 
-        name="Comment" 
+        name="UserComments" 
         component={Comment} 
         options={({ route }) => ({ 
           title: 'Comment',
           headerBackTitleVisible: false,
-          headerBackTitle: 'Back',
           headerShown: true,
           headerTintColor: '#333',
           headerTitleStyle: { fontWeight: 'bold' },
-          // Pass the sourceScreen information as a navigation param
-          initialParams: { sourceScreen: route.name }
         })}
       /> 
     </UserFeedStack.Navigator>
   );
 };
 
-
 const ProfileStackNavigator = () => {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
-      <ProfileStack.Screen name="Profile" component={Profile} />
+      <ProfileStack.Screen name="UserProfile" component={Profile} />
       <ProfileStack.Screen name="EditProfile" component={EditProfile} />
     </ProfileStack.Navigator>
   );
@@ -83,9 +124,11 @@ const SearchStackScreen = () => {
   return (
     <SearchStack.Navigator>
       <SearchStack.Screen name="SearchMain" component={Search} />
-      <SearchStack.Screen name="SearchedProfile" component={SearchedProfile} />
+      <SearchStack.Screen name="SearchUserProfile" component={SearchedProfile} />
     </SearchStack.Navigator>
   );
 };
+
+
 
 export default AppNavigator;
