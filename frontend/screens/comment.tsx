@@ -40,16 +40,19 @@ const Comment = ({ route, navigation }) => {
                 console.log('No such document!');
             }
         };
-
+    
         fetchPostDetails();
+    
+        // These functions should internally check if currentUser exists before subscribing
         const unsubscribeComments = fetchComments();
         const unsubscribeLikes = fetchLikes();
-
+    
         return () => {
             unsubscribeComments();
             unsubscribeLikes();
         };
-    }, [postId]);
+    }, [postId, currentUser]);
+    
 
     const getUsername = async (userId: string) => {
         const userRef = doc(firestore, 'users', userId);
@@ -62,45 +65,41 @@ const Comment = ({ route, navigation }) => {
     };
 
     const fetchComments = () => {
+        if (!currentUser) {
+            console.log('No user logged in, skipping comments subscription');
+            return () => {};
+        }
+    
         const commentsCollection = collection(firestore, "posts", postId, "comments");
-        return onSnapshot(commentsCollection, async (querySnapshot) => {
-            const commentsPromises = querySnapshot.docs.map(async (doc) => {
-                const data = doc.data();
-                let username = 'Anonymous';
-                if (data.userId) {
-                    try {
-                        username = await getUsername(data.userId);
-                    } catch (error) {
-                        console.error("Failed to fetch username for comment", error);
-                        username = 'Anonymous';
-                    }
-                }
-                return {
-                    id: doc.id,
-                    text: data.text,
-                    username,
-                    createdAt: data.createdAt
-                };
-            });
-
-            Promise.all(commentsPromises).then(commentsData => {
-                setComments(commentsData);
-                setCommentsCount(commentsData.length);
-            }).catch(error => {
-                console.error("Error processing comments", error);
-            });
+        return onSnapshot(commentsCollection, (querySnapshot) => {
+            const commentsData = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                text: doc.data().text,
+                username: doc.data().username, // Assuming this is how username is stored
+                createdAt: doc.data().createdAt
+            }));
+            setComments(commentsData);
+            setCommentsCount(commentsData.length);
         }, error => {
-            console.error("Error fetching comments", error);
+            console.error("Error fetching comments:", error.message);
         });
     };
-
+    
     const fetchLikes = () => {
+        if (!currentUser) {
+            console.log('No user logged in, skipping likes subscription');
+            return () => {};
+        }
+    
         const likesCollection = collection(firestore, "posts", postId, "likes");
         return onSnapshot(likesCollection, (querySnapshot) => {
             setLikesCount(querySnapshot.size);
+        }, error => {
+            console.error("Error fetching likes:", error.message);
         });
     };
-
+    
+    
     const handleAddComment = async (sourceScreen: string) => {
         if (newComment.trim() === "") return;
     
@@ -172,6 +171,7 @@ const Comment = ({ route, navigation }) => {
                     placeholder="Write a comment..."
                     value={newComment}
                     onChangeText={setNewComment}
+                    autoCapitalize='none'
                 />
                 <Button title="Post" onPress={handleAddComment} />
             </View>
@@ -195,26 +195,32 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 5,
+        color: '#3a506b',
+        fontFamily: 'JosefinSans-Bold',
     },
     postContent: {
-        fontSize: 14,
-        color: '#333',
+        fontSize: 16,
         marginBottom: 5,
+        color: '#36454f',
+        fontFamily: 'JosefinSans-Regular',
     },
     postAuthor: {
-        fontSize: 12,
-        color: '#666',
+        fontSize: 16,
+        color: '#36454f',
         marginBottom: 5,
+        fontFamily: 'JosefinSans-Regular',
     },
     postDate: {
-        fontSize: 12,
-        color: '#666',
+        fontSize: 14,
+        color: '#36454f',
         marginBottom: 5,
+        fontFamily: 'JosefinSans-Regular',
     },
     postLikesComments: {
         fontSize: 12,
-        color: '#666',
+        color: '#36454f',
         marginBottom: 10,
+        fontFamily: 'JosefinSans-Regular',
     },
     commentsContainer: {
         flex: 1,
@@ -224,7 +230,8 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: 20,
         fontSize: 16,
-        color: '#666',
+        color: '#36454f',
+        fontFamily: 'JosefinSans-Regular',
     },
     comment: {
         backgroundColor: '#d2e7d6',
@@ -236,12 +243,15 @@ const styles = StyleSheet.create({
     },
     commentText: {
         fontSize: 14,
-        color: '#333',
         marginBottom: 5,
+        fontFamily: 'JosefinSans-Regular',
+        color: '#36454f',
     },
     commentDetails: {
         fontSize: 12,
         color: '#666',
+        fontFamily: 'JosefinSans-Regular',
+
     },
     inputContainer: {
         flexDirection: 'row',
@@ -254,6 +264,7 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         padding: 10,
         marginRight: 10,
+        fontFamily: 'JosefinSans-Regular',
     },
 });
 

@@ -39,67 +39,66 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
     const currentUser = auth.currentUser;
 
     useEffect(() => {
-        const postsQuery = query(collection(firestore, "posts"), orderBy("createdAt", "desc"));
-        const unsubscribe = onSnapshot(postsQuery, async (querySnapshot) => {
-            const postsData = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
-                const postData = docSnapshot.data();
-                const userRef = doc(firestore, "users", postData.userId);
-                const userSnapshot = await getDoc(userRef);
-                const user = userSnapshot.data();
-                const username = user ? user.username : "Unknown";
-
-                const subRef = collection(firestore, "subscriptions");
-                const subQuery = query(subRef, where("subscriberId", "==", currentUser?.uid), where("subscribedToId", "==", postData.userId));
-                const subSnapshot = await getDocs(subQuery);
-                const isSubscribed = !subSnapshot.empty;
-
-                return {
-                    id: docSnapshot.id,
-                    title: postData.title,
-                    content: postData.content,
-                    createdAt: postData.createdAt.toDate().toString(),
-                    username: username,
-                    userId: postData.userId,
-                    likes: postData.likes || 0,
-                    currentUserLiked: postData.likes && Array.isArray(postData.likes) ? postData.likes.includes(currentUser?.uid) : false,
-                    subpost: postData.subpost ? {
-                        content: postData.subpost.content,
-                        createdAt: postData.subpost.createdAt
-                    } : undefined,
-                    isSubscribed: isSubscribed
-                };
-            }));
-            setPosts(postsData);
-        });
-
+        let unsubscribe = () => {};
+    
+        if (currentUser) {
+            const postsQuery = query(collection(firestore, "posts"), orderBy("createdAt", "desc"));
+            unsubscribe = onSnapshot(postsQuery, async (querySnapshot) => {
+                const postsData = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
+                    const postData = docSnapshot.data();
+                    const userRef = doc(firestore, "users", postData.userId);
+                    const userSnapshot = await getDoc(userRef);
+                    const user = userSnapshot.data();
+                    const username = user ? user.username : "Unknown";
+    
+                    const subRef = collection(firestore, "subscriptions");
+                    const subQuery = query(subRef, where("subscriberId", "==", currentUser?.uid), where("subscribedToId", "==", postData.userId));
+                    const subSnapshot = await getDocs(subQuery);
+                    const isSubscribed = !subSnapshot.empty;
+    
+                    return {
+                        id: docSnapshot.id,
+                        title: postData.title,
+                        content: postData.content,
+                        createdAt: postData.createdAt.toDate().toString(),
+                        username: username,
+                        userId: postData.userId,
+                        likes: postData.likes || 0,
+                        currentUserLiked: postData.likes && Array.isArray(postData.likes) ? postData.likes.includes(currentUser?.uid) : false,
+                        subpost: postData.subpost ? {
+                            content: postData.subpost.content,
+                            createdAt: postData.subpost.createdAt
+                        } : undefined,
+                        isSubscribed: isSubscribed
+                    };
+                }));
+                setPosts(postsData);
+            });
+        }
+    
         return () => unsubscribe();
     }, [currentUser]);
-
+    
     const handleLike = async (post: Post) => {
         const postRef = doc(firestore, "posts", post.id);
         const likesRef = collection(firestore, "posts", post.id, "likes");
         const userLikeRef = doc(likesRef, currentUser?.uid);
-        
+    
         try {
             await runTransaction(firestore, async (transaction) => {
                 const userLikeSnap = await transaction.get(userLikeRef);
                 const postSnap = await transaction.get(postRef);
                 const postData = postSnap.data();
     
-                // Ensure postLikes is initialized as an empty array if postData?.likes is not an array
-                let postLikes: string[] = Array.isArray(postData?.likes) ? postData?.likes : [];
-                
+                let postLikes: string[] = Array.isArray(postData?.likes) ? postData?.likes : []; // Ensure postLikes is initialized properly
+    
                 if (userLikeSnap.exists()) {
-                    // User already liked, so unlike
                     transaction.delete(userLikeRef);
                     postLikes = postLikes.filter((userId: string) => userId !== currentUser?.uid);
                 } else {
-                    // User hasn't liked, so like
                     transaction.set(userLikeRef, { likedAt: new Date() });
-                    if (currentUser?.uid) { // Check if currentUser?.uid is not undefined
-                        postLikes.push(currentUser.uid); // Push currentUser?.uid into postLikes
-                    } else {
-                        console.error("Current user ID is undefined");
+                    if (currentUser?.uid) {
+                        postLikes.push(currentUser.uid);
                     }
                 }
     
@@ -109,6 +108,7 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
             console.error("Transaction failed: ", error);
         }
     };
+    
 
     const handleSubscribe = async (post: Post) => {
         try {
@@ -218,7 +218,7 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                     <View key={post.id} style={styles.post}>
                         <Text style={styles.username}>{post.username}</Text>
                         <Text style={styles.postTitle}>{post.title}</Text>
-                        <Text>{post.content}</Text>
+                        <Text style={styles.postContent}>{post.content}</Text>
                         <Text style={styles.postDate}>{post.createdAt}</Text>
                         <View style={styles.actionsContainer}>
                             <TouchableOpacity style={styles.actionButton} onPress={() => handleLike(post)}>
@@ -249,7 +249,7 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
 
                         {post.subpost && (
                             <View style={styles.subpostContainer}>
-                                <Text>{`${post.username}: ${post.subpost.content}`}</Text>
+                                <Text style ={styles.subpostText}>{`${post.username}: ${post.subpost.content}`}</Text>
                                 <Text style={styles.subpostDate}>{new Date(post.subpost.createdAt).toLocaleDateString()}</Text>
                             </View>
                         )}
@@ -260,17 +260,18 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                                     placeholder="Enter your subpost"
                                     value={subpostContents[post.id]}
                                     onChangeText={(text) => handleSubpostChange(text, post.id)}
+                                    autoCapitalize='none'
                                 />
                                 <TouchableOpacity
                                     style={styles.button}
                                     onPress={() => handleSubpostSubmit(post.id)}
                                 >
-                                    <Text>Submit Subpost</Text>
+                                    <Text style={styles.subpostBtnText}>Submit Subpost</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
                         <TouchableOpacity style={styles.ellipsisContainer} onPress={() => handleEllipsisPress(post.id)}>
-                            <FontAwesome5 name="ellipsis-v" size={20} color="black" />
+                            <FontAwesome5 name="ellipsis-v" size={20} color="#36454f" />
                         </TouchableOpacity>
                     </View>
                 ))}
@@ -317,6 +318,12 @@ const UserFeed: React.FC<Props> = ({ navigation }) => {
                     </View>
                 </TouchableOpacity>
             </Modal>
+            <TouchableOpacity
+                style={styles.messageIcon}
+                onPress={() => navigation.navigate('UsersList')}
+            >
+                <FontAwesome5 name="comments" size={24} color="#36454F" />
+            </TouchableOpacity>
         </View>
     );
 };
@@ -325,10 +332,17 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#d2e7d6',
-        paddingTop: '15%'
+        paddingTop: '20%'
     },
     scrollContainer: {
         alignItems: 'center'
+    },
+    messageIcon: {
+        color: '#36454f',
+        position: 'absolute',
+        top: '10%',
+        right: 10,
+        justifyContent: 'flex-end'
     },
     post: {
         padding: 10,
@@ -342,12 +356,23 @@ const styles = StyleSheet.create({
     },
     postTitle: {
         fontSize: 18,
-        fontWeight: 'bold'
+        fontWeight: 'bold',
+        color: '#36454f',
+        fontFamily: 'JosefinSans-Bold',
+        marginTop: 5,
+    },
+    postContent:{
+        color: '#36454f',
+        fontFamily: 'JosefinSans-Regular',
+        fontSize: 16,
+        marginTop: 5,
+        marginBottom: 5,
     },
     postDate: {
         fontSize: 12,
         color: '#666',
         marginBottom: 5,
+        fontFamily: 'JosefinSans-Regular',
     },
     actionsContainer: {
         flexDirection: 'row',
@@ -397,6 +422,10 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         marginBottom: 10,
     },
+    subpostText: {
+        color: '#36454f',
+        fontFamily: 'JosefinSans-Regular',
+    },
     input: {
         width: '90%',
         padding: 10,
@@ -404,27 +433,35 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#ccc',
         borderRadius: 5,
-        backgroundColor: '#fff',
+        backgroundColor: '#f5f5f5',
+        color: '#36454f',
+        fontFamily: 'JosefinSans-Regular',
     },
     button: {
-        backgroundColor: '#007bff',
+        backgroundColor: '#3a506b',
         padding: 10,
         borderRadius: 5,
     },
     subpostDate: {
         fontSize: 12,
         color: '#888',
-        marginTop: 4
+        marginTop: 4,
+        fontFamily: 'JosefinSans-Regular',
+    },
+    subpostBtnText: {
+        color: '#f5f5f5',
+        fontFamily: 'JosefinSans-Regular',
     },
     optionText: {
         marginLeft: 10,
         color: 'white',
+        fontFamily: 'JosefinSans-Regular',
     },
     reportButton: {
-        backgroundColor: 'red',
+        backgroundColor: '#ff6b6b',
     },
     editButton: {
-        backgroundColor: 'blue',
+        backgroundColor: '#3a506b',
     },
     modalOverlay: {
         flex: 1,

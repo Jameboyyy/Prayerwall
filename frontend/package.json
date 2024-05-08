@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@firebase/firestore": "^4.6.1",
-    "@react-native-async-storage/async-storage": "^1.23.1",
+    "@react-native-async-storage/async-storage": "^1.21.0",
     "@react-native-picker/picker": "2.6.1",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@react-navigation/stack": "^6.3.29",

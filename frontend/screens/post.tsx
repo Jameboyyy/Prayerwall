@@ -48,6 +48,7 @@ const Post = () => {
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Enter post title"
+                autoCapitalize='none'
             />
             <Text style={styles.label}>Content</Text>
             <TextInput
@@ -57,6 +58,7 @@ const Post = () => {
                 placeholder="Enter post content"
                 multiline={true}
                 numberOfLines={4}
+                autoCapitalize='none'
             />
             <TouchableOpacity style={styles.button} onPress={handlePostSubmit}>
                 <Text style={styles.buttonText}>Submit Post</Text>
@@ -90,10 +92,11 @@ const styles = StyleSheet.create({
         padding: 10,
         marginVertical: 8,
         borderWidth: 1,
-        borderColor: '#fff',
+        borderColor: '#f5f5f5',
         borderRadius: 5,
-        backgroundColor: '#fff',
-        fontFamily: 'JosefinSans-Regular',
+        backgroundColor: '#f5f5f5',
+        fontFamily: 'JosefinSans-Bold',
+        color: '#36454f',
     },
     inputContent: {
         width: '90%',
@@ -101,10 +104,11 @@ const styles = StyleSheet.create({
         marginVertical: 8,
         padding: 10,
         borderWidth: 1,
-        borderColor: '#fff',
+        borderColor: '#f5f5f5',
         borderRadius: 5,
-        backgroundColor: '#fff',
+        backgroundColor: '#f5f5f5',
         fontFamily: 'JosefinSans-Regular',
+        color: '#36454f',
     },
     button: {
         backgroundColor: '#3a506b',
@@ -115,7 +119,7 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     buttonText: {
-        color: '#fff',
+        color: '#f5f5f5',
         fontSize: 18,
         fontFamily: 'JosefinSans-Regular',
     }

@@ -94,10 +94,11 @@ const Notification: React.FC<NotificationProps> = ({ currentUser }) => {
       ) : (
         notifications.map(notification => (
           <View key={notification.id} style={styles.notification}>
-            <Text style={styles.boldText}>{notification.username}</Text>
-            <Text style={styles.boldText}>Title: {notification.postTitle}</Text>
-            <Text style={styles.normalText}>Content: {notification.postContent}</Text>
-            <Text style={styles.boldText}>Subpost: {notification.subpostContent}</Text>
+            <Text style={styles.notificationText}> A post you subscribed to was updated!</Text>
+            <Text style={styles.usernameText}>{notification.username}</Text>
+            <Text style={styles.titleText}>Title: {notification.postTitle}</Text>
+            <Text style={styles.contentText}>Content: {notification.postContent}</Text>
+            <Text style={styles.subpostText}>Subpost: {notification.subpostContent}</Text>
           </View>
         ))
       )}
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
   notification: {
     marginBottom: 10,
     padding: 10,
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
@@ -144,15 +145,36 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  boldText: {
-    fontWeight: 'bold',
+  notificationText: {
+    fontFamily: 'JosefinSans-Regular',
+    color: '#3a506b',
     fontSize: 16,
+    marginBottom: 10,
+  },
+  usernameText: {
+    fontFamily: 'JosefinSans-Bold',
+    color: '#3a506b',
+    fontSize: 20,
     marginBottom: 4,
   },
-  normalText: {
+  titleText: {
+    fontFamily: 'JosefinSans-Regular',
     fontSize: 16,
     marginBottom: 4,
+    color: '#36454f'
   },
+  contentText: {
+    fontFamily: 'JosefinSans-Regular',
+    fontSize: 16,
+    marginBottom: 4,
+    color: '#36454f',
+  }, 
+  subpostText: {
+    fontFamily: 'JosefinSans-Regular',
+    fontSize: 16,
+    marginBottom: 4,
+    color: '#36454f'
+  }
 });
 
 export default Notification;

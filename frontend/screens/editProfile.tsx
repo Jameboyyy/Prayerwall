@@ -133,6 +133,8 @@ const styles = StyleSheet.create({
         borderColor: '#fff',
         borderRadius: 5,
         backgroundColor: '#fff',
+        fontFamily: 'JosefinSans-Regular',
+        color: '#3a506b',
     },
     button: {
         backgroundColor: '#3a506b',
@@ -143,8 +145,9 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     buttonText: {
-        color: '#fff',
+        color: '#f5f5f5',
         fontSize: 18,
+        fontFamily: 'JosefinSans-Regular',
     }
 });
 

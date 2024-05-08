@@ -8,6 +8,7 @@ const Auth = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [error, setError] = useState('');
     const auth = getAuth();
 
     const resetNavigation = (targetRoute) => {
@@ -25,7 +26,7 @@ const Auth = ({ navigation }) => {
     const handleAuth = () => {
         if (isSignUp) {
             if (password !== confirmPassword) {
-                console.log('Passwords do not match');
+                setError('Passwords do not match');
                 return;
             }
             createUserWithEmailAndPassword(auth, email, password)
@@ -43,7 +44,8 @@ const Auth = ({ navigation }) => {
                     resetNavigation('Main');  // Navigate to Main on successful login
                 })
                 .catch((error) => {
-                    console.error('Login error:', error.message);
+                    console.log('Login error:', error.message);
+                    setError(error.message);
                 });
         }
     };
@@ -57,6 +59,9 @@ const Auth = ({ navigation }) => {
                     source={require('../assets/logo.png')}
                 />
             </View>
+            {error ? (
+                <Text style={styles.errorText}>{error}</Text> // Display the error message
+            ) : null}
             <TextInput
                 style={styles.input}
                 placeholder="Email"
@@ -148,6 +153,11 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     buttonText_toggle: {
+        fontFamily: 'JosefinSans-Regular',
+    },
+    errorText: {
+        color: 'red',
+        marginBottom: 10,
         fontFamily: 'JosefinSans-Regular',
     }
 });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, ScrollView, RefreshControl, TextInput, Modal } from 'react-native';
-import { doc, getDoc, collection, query, where, getDocs, orderBy, updateDoc, deleteDoc, runTransaction } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, updateDoc, deleteDoc, runTransaction, onSnapshot } from 'firebase/firestore';
+import { getAuth, signOut } from 'firebase/auth'; // Import signOut from auth
 import { firestore } from '../firebaseConfig';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
@@ -28,7 +28,6 @@ type Post = {
     currentUserLiked: boolean;
     subpost?: Subpost;
 };
-
 const Profile = ({ navigation }) => {
     const [user, setUser] = useState<UserProfile>({
         username: '',
@@ -46,13 +45,55 @@ const Profile = ({ navigation }) => {
     const auth = getAuth();
     const userId = auth.currentUser?.uid;
 
+    let unsubscribeUserDoc = () => {};
+    let unsubscribePosts = () => {};
+
     useEffect(() => {
-        const fetchData = async () => {
-            await fetchUserData();
-            await fetchUserPosts();
+        if (!userId) {
+            console.log("No user ID available, skipping subscription setup.");
+            return;
+        }
+    
+        const userDocRef = doc(firestore, "users", userId);
+        const postsQuery = query(collection(firestore, "posts"), where("userId", "==", userId), orderBy("createdAt", "desc"));
+    
+        const unsubscribeUserDoc = onSnapshot(userDocRef, (docSnapshot) => {
+            if (docSnapshot.exists()) {
+                setUser(docSnapshot.data() as UserProfile);
+            } else {
+                console.log("No such document!");
+            }
+        }, error => console.log("Error listening to user data:", error));
+    
+        const unsubscribePosts = onSnapshot(postsQuery, (querySnapshot) => {
+            const userPosts = querySnapshot.docs.map(doc => {
+                const postData = doc.data() as Post;
+                const likes = Array.isArray(postData.likes) ? postData.likes : [];
+                return {
+                    ...postData,
+                    id: doc.id,
+                    createdAt: postData.createdAt.toDate().toLocaleDateString(),
+                    userId: postData.userId,
+                    likes: likes,
+                    currentUserLiked: likes.includes(userId),
+                    subpost: postData.subpost ? {
+                        content: postData.subpost.content,
+                        createdAt: postData.subpost.createdAt
+                    } : undefined
+                };
+            });
+            setPosts(userPosts);
+            setUser(prev => ({ ...prev, posts: userPosts.length }));
+        }, error => console.log("Error listening to posts:", error));
+    
+        // Cleanup function that unsubscribes from firestore listeners
+        return () => {
+            unsubscribeUserDoc();
+            unsubscribePosts();
         };
-        fetchData();
     }, [userId]);
+    
+    
 
     const fetchUserData = async () => {
         if (userId) {
@@ -72,13 +113,15 @@ const Profile = ({ navigation }) => {
             const querySnapshot = await getDocs(postsQuery);
             const userPosts = querySnapshot.docs.map(doc => {
                 const postData = doc.data() as Post;
+                // Ensure likes is an array, defaulting to an empty array if undefined
+                const likes = Array.isArray(postData.likes) ? postData.likes : [];
                 return {
                     ...postData,
                     id: doc.id,
                     createdAt: postData.createdAt.toDate().toLocaleDateString(),
                     userId: postData.userId,
-                    likes: postData.likes || [],
-                    currentUserLiked: postData.likes.includes(userId),
+                    likes: likes,
+                    currentUserLiked: likes.includes(userId),  // Now safely using includes
                     subpost: postData.subpost ? {
                         content: postData.subpost.content,
                         createdAt: postData.subpost.createdAt
@@ -89,13 +132,14 @@ const Profile = ({ navigation }) => {
             setUser(prev => ({ ...prev, posts: userPosts.length }));
         }
     };
+    
 
     const handleLike = async (post: Post) => {
         const postRef = doc(firestore, "posts", post.id);
         await runTransaction(firestore, async (transaction) => {
             const postDoc = await transaction.get(postRef);
             const postData = postDoc.data() as Post;
-            let postLikes = postData.likes || [];
+            let postLikes = postData.likes || []; // Ensure this is always treated as an array
             if (postLikes.includes(userId)) {
                 postLikes = postLikes.filter(id => id !== userId);
             } else {
@@ -105,6 +149,7 @@ const Profile = ({ navigation }) => {
             setPosts(posts.map(p => p.id === post.id ? { ...p, likes: postLikes, currentUserLiked: postLikes.includes(userId) } : p));
         });
     };
+    
 
     const handleSubpostSubmit = async (postId: string) => {
         const content = subpostContents[postId];
@@ -153,11 +198,37 @@ const Profile = ({ navigation }) => {
         setModalVisible(false);
     };
 
+    const handleLogout = async () => {
+        try {
+            // Check authentication status before sign-out
+            console.log("Current user:", auth.currentUser);
+            
+            // Unsubscribe from Firestore listeners if they are active
+            if (unsubscribeUserDoc) unsubscribeUserDoc();
+            if (unsubscribePosts) unsubscribePosts();
+    
+            // Attempt to sign out
+            await signOut(auth);
+            console.log("User signed out successfully.");
+            
+            // Navigate to the login screen or any other screen after logout
+            navigation.navigate('Auth');
+        } catch (error) {
+            // Log any errors that occur during sign-out
+            console.error('Error signing out: ', error);
+            // If sign-out fails, log the current user to help diagnose the issue
+            console.log("Current user:", auth.currentUser);
+        }
+    };
+    
     return (
         <ScrollView
             contentContainerStyle={styles.container}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                <FontAwesome5 name="sign-out-alt" size={20} color="#3a506b" />
+            </TouchableOpacity>
             {user.profilePicture && (
                 <Image
                     source={{ uri: user.profilePicture }}
@@ -176,21 +247,21 @@ const Profile = ({ navigation }) => {
             {posts.map(post => (
                 <View key={post.id} style={styles.post}>
                     <TouchableOpacity style={styles.editButton} onPress={() => showModal(post.id)}>
-                        <FontAwesome5 name="ellipsis-v" size={20} color="black" />
+                        <FontAwesome5 name="ellipsis-v" size={20} color="#36454f" />
                     </TouchableOpacity>
                     <Text style={styles.postTitle}>{post.title}</Text>
                     <Text style={styles.postContent}>{post.content}</Text>
                     <Text style={styles.postDate}>{post.createdAt}</Text>
                     <View style={styles.actionsContainer}>
                         <TouchableOpacity onPress={() => handleLike(post)} style={styles.likeButton}>
-                            <FontAwesome5 name="pray" size={20} color={post.currentUserLiked ? "#3a506b" : "black"} />
+                            <FontAwesome5 name="pray" size={20} color={post.currentUserLiked ? "#3a506b" : "#36454f"} />
                             <Text> {post.likes.length} Likes</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.commentButton}
                             onPress={() => navigation.navigate('UserComments', { postId: post.id })}
                         >
-                            <FontAwesome5 name="comment" size={20} color="black" />
+                            <FontAwesome5 name="comment" size={20} color="#36454f" />
                         </TouchableOpacity>
                     </View>
                     {post.subpost ? (
@@ -202,12 +273,13 @@ const Profile = ({ navigation }) => {
                                 placeholder="Add a subpost"
                                 value={subpostContents[post.id] || ''}
                                 onChangeText={(text) => handleSubpostChange(text, post.id)}
+                                autoCapitalize='none'
                             />
                             <TouchableOpacity
                                 style={styles.submitButton}
                                 onPress={() => handleSubpostSubmit(post.id)}
                             >
-                                <Text>Submit</Text>
+                                <Text style={styles.submitButtonText}>Submit</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -265,16 +337,17 @@ const styles = StyleSheet.create({
         marginTop: 50
     },
     username: {
-        fontSize: 16,
+        fontSize: 20,
         color: '#3a506b',
-        fontWeight: 'bold',
-        marginBottom: 4
+        fontFamily: 'JosefinSans-Bold',
+        marginBottom: 10
     },
     name: {
         fontSize: 20,
         fontWeight: 'bold',
         marginBottom: 10,
-        color: '#333'
+        color: '#36454f',
+        fontFamily: 'JosefinSans-Regular'
     },
     statsContainer: {
         flexDirection: 'row',
@@ -284,7 +357,9 @@ const styles = StyleSheet.create({
     },
     stat: {
         fontSize: 16,
-        color: '#333'
+        color: '#36454f',
+        fontFamily: 'JosefinSans-Regular'
+
     },
     button: {
         backgroundColor: '#3a506b',
@@ -312,18 +387,21 @@ const styles = StyleSheet.create({
     },
     postTitle: {
         fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
+        fontFamily: 'JosefinSans-Bold',
+        color: '#36454f',
         marginBottom: 4
     },
     postContent: {
         fontSize: 14,
-        color: '#333',
-        marginBottom: 4
+        fontFamily: 'JosefinSans-Regular',
+        color: '#36454f',
+        marginBottom: 4,
+        width: '90%'
     },
     postDate: {
         fontSize: 12,
-        color: '#666'
+        color: '#666',
+        marginBottom: 4
     },
     actionsContainer: {
         flexDirection: 'row',
@@ -340,9 +418,10 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     subpostText: {
-        color: '#666',
+        color: '#36454f',
         fontSize: 14,
-        marginBottom: 10
+        marginBottom: 10,
+        fontFamily: 'JosefinSans-Regular'
     },
     subpostInputContainer: {
         flexDirection: 'row',
@@ -356,13 +435,19 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         padding: 10,
         marginRight: 10,
-        borderRadius: 5
+        borderRadius: 5,
+        fontFamily: 'JosefinSans-Regular',
+        color: '#36545f'
     },
     submitButton: {
         backgroundColor: '#3a506b',
         paddingHorizontal: 20,
         paddingVertical: 10,
-        borderRadius: 5
+        borderRadius: 5,
+    },
+    submitButtonText: {
+        color: '#f5f5f5',
+        fontFamily: 'JosefinSans-Regular'
     },
     editButton: {
         position: 'absolute',
@@ -387,14 +472,14 @@ const styles = StyleSheet.create({
         elevation: 5
     },
     buttonClose: {
-        backgroundColor: "#2196F3",
+        backgroundColor: "#36454f",
     },
     buttonDelete: {
-        backgroundColor: "red",
+        backgroundColor: "#ff6b6b",
         marginTop: 10,
     },
     buttonEdit: {
-        backgroundColor: "blue",
+        backgroundColor: "#3a506b",
         marginTop: 10,
     },
     centeredView: {
@@ -404,9 +489,15 @@ const styles = StyleSheet.create({
         marginTop: 22
     },
     textStyle: {
-        color: "white",
+        color: "#f5f5f5",
         fontWeight: "bold",
-        textAlign: "center"
+        textAlign: "center",
+        fontFamily: 'JosefinSans-Regular'
+    },
+    logoutButton: {
+        position: 'absolute',
+        top: '10%',
+        right: 10,
     }
 });
 

@@ -17,6 +17,7 @@ import SearchedProfile from '../screens/searchedProfile';
 import GroupChat from '../screens/groupChat';
 import EditPost from '../screens/editPost';
 import Comment from '../screens/comment';  // Import Comment component
+import UsersList from '../screens/usersList';
 
 const AuthContext = React.createContext(null);
 
@@ -75,7 +76,7 @@ const MainTabNavigator = () => {
           return <FontAwesome5 name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#3a506b',
-        tabBarInactiveTintColor: 'black',
+        tabBarInactiveTintColor: '#36454f',
         tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: '#d2e7d6',
@@ -96,6 +97,7 @@ const UserFeedStackScreen = () => {
     <UserFeedStack.Navigator>
       <UserFeedStack.Screen name="UserFeedMain" component={UserFeed} options={{ headerShown: false }}/>
       <UserFeedStack.Screen name="EditUserPost" component={EditPost} options={{ headerShown: false }} />
+      <UserFeedStack.Screen name="UsersList" component={UsersList} options={{ headerShown: true, title: 'Group Chat' }} />
       <UserFeedStack.Screen 
         name="UserComments" 
         component={Comment} 
