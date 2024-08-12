@@ -1,9 +1,9 @@
-# PrayerWall
+# Simply Amen
 
 ## Introduction
-Welcome to PrayerWall, the Christian social media app designed for prayer and spiritual growth. PrayerWall connects believers worldwide, offering a space to share prayers, find comfort, and inspire each other. Our mission is clear: to provide a dedicated platform for prayer, fostering a community of support and faith. Join us to deepen your spiritual journey in a community that cares.
+Welcome to Simply Amen, the Christian social media app designed for prayer and spiritual growth. ` connects believers worldwide, offering a space to share prayers, find comfort, and inspire each other. Our mission is clear: to provide a dedicated platform for prayer, fostering a community of support and faith. Join us to deepen your spiritual journey in a community that cares.
 
-At PrayerWall, we believe in the power of prayer and the strength of community. Whether you're seeking guidance, healing, or a moment of tranquility, our platform is designed to be your companion on your spiritual journey. From submitting prayer requests to participating in live prayer sessions, PrayerWall is a place where your voice is heard and your spirit is uplifted.
+At Simply Amen, we believe in the power of prayer and the strength of community. Whether you're seeking guidance, healing, or a moment of tranquility, our platform is designed to be your companion on your spiritual journey. From submitting prayer requests to participating in live prayer sessions, PrayerWall is a place where your voice is heard and your spirit is uplifted.
 
 Join us in creating a compassionate and supportive space, where every prayer is valued and every individual is respected. Together, let's build a community that transcends boundaries and nurtures the soul.
 
