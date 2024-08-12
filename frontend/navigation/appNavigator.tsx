@@ -124,7 +124,7 @@ const ProfileStackNavigator = () => {
 
 const SearchStackScreen = () => {
   return (
-    <SearchStack.Navigator>
+    <SearchStack.Navigator screenOptions={{ headerShown: false }}>
       <SearchStack.Screen name="SearchMain" component={Search} />
       <SearchStack.Screen name="SearchUserProfile" component={SearchedProfile} />
     </SearchStack.Navigator>

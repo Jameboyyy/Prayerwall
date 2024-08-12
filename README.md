@@ -32,8 +32,7 @@ Users can choose to make their prayer circles public or private. Private circles
 Each circle can have a shared prayer list where members can add and view prayer requests specific to the group’s focus. This encourages a more intimate and targeted prayer experien
 ### User Profiles:
 
-The ability for users to create personal profiles where they can track their prayer requests, participate in community activities, and customize thheir expereince on the website. Users would also be able to have the ability to share either their Virtual Prayer Circles or Shared Prayer Lists. 
-
+The ability for users to create personal profiles where they can track their prayer requests, participate in community activities, and customize their expereince on the website. Users would also be able to have the ability to share either their Virtual Prayer Circles or Shared Prayer Lists. 
 
 
 ## Technologies Used
